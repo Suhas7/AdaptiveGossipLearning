@@ -1,16 +1,20 @@
+#todo import Model, BetaPolicy
+
 class GossipAgent:
 	def __init__(self, alpha=.5):
 		# Store agent metadata (name, data, filepaths, log output
 		# hyperparameters, etc)
 		self.id = aid
 		self.beta_fp = beta_filepath
+		#todo allocate 
 		self.model_fp = model_filepath
 		self.log_fp = log_filepath
+		self.data = None
 		self.alpha = alpha
 		self.sigma = sigma
-		# Allocate agent model, both for prediction and beta
-		self.beta_policy = None
-		self.model = None
+		# TODO Import agent model, both for prediction and beta policy
+		self.beta_policy = Model() 
+		self.model = BetaPolicy()
 		# Allocate reward structures
 		self.local_acc = 0
 		self.peer_accs = dict()
@@ -31,19 +35,12 @@ class GossipAgent:
 		return result / denom
 
 	def evaluate(self, model):
+		#todo complete this
 		return AUC, gradient
 
 	def local_step(self):
 		# Train a local step on the model
 		self.local_acc = 0 #model accuracy
-
-	def peer_step(self, other):
-		# Given a peer, communicate with them using following helper function
-		self.stage1_comm_model(other)
-		self.stage2_eval_peer(other)
-		self.stage3_comm_accs(other)
-		self.stage4_comm_rpeer(other)
-		self.stage5_local_updates(other)
 
 	def update_peer_accs(self, oid, pacc):
 		# Update peer_accs
@@ -60,13 +57,13 @@ class GossipAgent:
 		# Evaluate peer model locally (to compute accuracy & gradient)
 		self.peer_acc, self.peer_grad = self.evaluate(self.peer_model)
 		other.peer_acc, other.peer_grad = other.evaluate(other.peer_model)
-		self.update_peer_accs(other.id, self.peer_acc)
-		other.update_peer_accs(self.id, other.peer_acc)
-
+		
 	def stage3_comm_accs(self, other):
 		# Transmit and receive model accuracies
 		self.my_other_acc = other.peer_acc
 		other.my_other_acc = self.peer_acc
+		self.update_peer_accs(other.id, self.my_other_acc)
+		other.update_peer_accs(self.id, other.my_other_acc)
 
 	def stage4_comm_rpeer(self, other):
 		# Communicate rpeer values
@@ -86,6 +83,8 @@ class GossipAgent:
 		# Calculate gradient of peer model on local data
 		peer_grad = self.peer_grad # precomputed in stage2
 		# beta-weighted combined gradient
-		composite_grad = local_grad * beta + peer_grad * (1-beta)
+		composite_grad = local_grad * beta + peer_grad * (1 - beta)
 		# 1-step of learning from gradient
 		self.model += learning_rate*composite_grad
+
+		#train beta using self.calculate_total_reward()
