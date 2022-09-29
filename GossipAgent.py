@@ -1,35 +1,38 @@
+from data_distribution import *
+from agent_info import NUM_AGENTS
 #todo import Model, BetaPolicy
 
 class GossipAgent:
-	def __init__(self, alpha=.5):
+	def __init__(self, aid, distribution = [1]*10, alpha=.5, sigma = .8, coord = [0,0]):
 		# Store agent metadata (name, data, filepaths, log output
 		# hyperparameters, etc)
 		self.id = aid
-		self.beta_fp = beta_filepath
-		#todo allocate 
-		self.model_fp = model_filepath
-		self.log_fp = log_filepath
-		self.data = None
 		self.alpha = alpha
 		self.sigma = sigma
+		self.data = self.load_agent_data(distribution)
+		# Model & Log Outputs
+		self.beta_fp = "./betas/agent_{}/".format(aid)
+		self.model_fp = "./models/agent_{}/".format(aid)
+		self.log_fp = "./logs/agent_{}/".format(aid)
 		# TODO Import agent model, both for prediction and beta policy
 		self.beta_policy = Model() 
 		self.model = BetaPolicy()
 		# Allocate reward structures
 		self.local_acc = 0
-		self.peer_accs = dict()
+		self.peer_accs = []
+		self.peer_ages = []
+		self.peer_idmap = dict()
 
 	def calculate_total_reward(self):
 		return self.local_acc + self.calculate_rpeer()
 
 	def calculate_rpeer(self):
-		# todo: make faster using numpy
 		result = 0
 		denom = 0
-		for key, value in self.peer_accs.items():
-			scale = (self.sigma ** value[1])
+		for key in self.peer_accs.keys():
+			scale = (self.sigma ** self.peer_ages[key])
 			denom += scale
-			result += value[0]*scale
+			result += self.peer_accs[key]*scale
 		if denom == 0:
 			return 0
 		return result / denom
@@ -44,9 +47,10 @@ class GossipAgent:
 
 	def update_peer_accs(self, oid, pacc):
 		# Update peer_accs
-		for pid, other in self.peer_accs:
-			self.peer_accs[pid] = (other[0], other[1]+1)
-		self.peer_accs[oid] = (pacc, 0)
+		for pid, other in self.peer_accs.items():
+			self.peer_ages[pid] = other[1]+1
+		self.peer_accs[oid] = pacc
+		self.peer_ages[oid] = 0
 
 	def stage1_comm_model(self, other):
 		# Transmit and receive models to start interaction
@@ -88,3 +92,11 @@ class GossipAgent:
 		self.model += learning_rate*composite_grad
 
 		#train beta using self.calculate_total_reward()
+
+	def load_agent_data(int_distribution):
+	    full_train, full_test = fetch_mnist_data()
+	    train_distributor = DataDistributor(full_train, 10)
+	    return train_distributor.distribute_data(int_distribution, args.n_train)
+	    #test_distributor = DataDistributor(full_test, 10)
+	    #test = test_distributor.distribute_data(int_distribution, args.n_test)
+

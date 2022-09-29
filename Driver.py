@@ -1,4 +1,5 @@
 from GossipAgent import GossipAgent
+from agent_info import agent_info, NUM_AGENTS
 import random as rd
 
 class Driver:
@@ -7,27 +8,25 @@ class Driver:
 		self.local_step_freq = 5 #number of local steps between each peer step.
 		self.adjacencies = info.adjacency_matrix
 		# Allocate agents
-			'''
+		'''
 			Agent Name
-			Model filepath
-			Beta filepath
 			name of model to use
 			log filepath
 			Data distribution
 			Starting coordinates
 			alpha, sigma
-
-
-			'''
+		'''
 		self.agents = dict()
-		for agent in info.agent_info:
-			self.agents[agent.id] = GossipAgent(agent)
-		#Todo distribute data across agents
+		for i in range(NUM_AGENTS):
+			self.agents[i] = GossipAgent(i, distribution=agent_info["dists"][i], 
+											alpha=agent_info["alpha"][i], 
+											sigma=agent_info["sigma"][i], 
+											coord = agent_info["start_coords"][i])
 
 	def env_step(self):
 		# Execute all local steps
 		for _ in range(self.local_step_freq):
-			for key,agent in self.agents:
+			for key,agent in self.agents.items():
 				agent.local_step()
 		# Execute peer step
 		#TODO split this out as "environment" object

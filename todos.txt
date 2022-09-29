@@ -1,10 +1,8 @@
 implement environment for adjacency matrix & gridworld (robert)
-implement driver functionality to load in agentinfo and initialize agents (suhas)
 actually use models in GossipAgent.py
 	implement prediction model (robert)
 		MLP & CNN
 	design beta policy network (logistic regression) (robert)
-	optimize rpeer calculations (suhas)
 	(zejian):
 		implement self.
 			evaluate(other)
