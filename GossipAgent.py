@@ -1,5 +1,7 @@
 from data_distribution import *
 from agent_info import NUM_AGENTS
+from BetaPolicy import BetaPolicy
+from MnistCnn import MnistCnn
 #todo import Model, BetaPolicy
 
 class GossipAgent:
@@ -15,13 +17,17 @@ class GossipAgent:
 		self.model_fp = "./models/agent_{}/".format(aid)
 		self.log_fp = "./logs/agent_{}/".format(aid)
 		# TODO Import agent model, both for prediction and beta policy
-		self.beta_policy = Model() 
-		self.model = BetaPolicy()
+		self.beta_policy = BetaPolicy() 
+		self.model = MnistCnn()
 		# Allocate reward structures
 		self.local_acc = 0
 		self.peer_accs = []
 		self.peer_ages = []
 		self.peer_idmap = dict()
+
+	def save_models(self, eps):
+		torch.save(self.beta_policy.state_dict(), self.beta_fp + "episode_{}.pt".format(eps))
+		torch.save(self.MnistCnn.state_dict(), self.model_fp + "episode_{}.pt".format(eps))
 
 	def calculate_total_reward(self):
 		return self.local_acc + self.calculate_rpeer()
