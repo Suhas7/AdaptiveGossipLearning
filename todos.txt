@@ -1,3 +1,21 @@
+# 10/05/2022
+
+## DL: 10/09/2022
+
+* beta stuffs
+	* make beta policy discrete (specify value as hyperpameters)
+	* complete beta policy update (REINFORCE style update) 
+		* (zejian)
+* Add main file and make our code modularized which can be turned on/off
+	* (robert)
+* Combine peer model (https://github.com/Suhas7/WeightedGossipLearning/blob/master/GossipAgent.py#L98)
+	* (zejian)
+* Run simple config of our code (group)
+	* MNIST, 2 agents, 1x1 grid world (update every round), uniform data distribution
+	* MNIST, 2 agents, 1x1 grid world (update every round), un-balanced data distribution
+			
+# 09/28/2022
+
 implement environment for adjacency matrix & gridworld (robert)
 actually use models in GossipAgent.py
 	implement prediction model (robert)
