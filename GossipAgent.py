@@ -143,7 +143,7 @@ class GossipAgent:
             self.model.load_state_dict(state)  # is this step necessary?
 
         # train beta using self.calculate_total_reward()
-        reward = self.alpha * self.local_acc + (1 - self.alpha) * self.other_rpeer
+        reward = self.alpha * self.local_acc + (1 - self.alpha) * self.calculate_rpeer()
         action_onehot = F.one_hot(np.where(self.beta_action == beta), self.beta_num)
         beta_loss = torch.log(torch.clip(action_onehot * policy, 1e-10, 1.0)) * reward
         self.beta_optimizer.zero_grad()
