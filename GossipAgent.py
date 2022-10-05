@@ -1,13 +1,17 @@
+import numpy as np
 import torch
+import torch.nn.functional as F
 
 from data_distribution import *
 from agent_info import NUM_AGENTS
 from BetaPolicy import BetaPolicy
 from MnistCnn import MnistCnn
 #todo import Model, BetaPolicy
+import sklearn
 
 class GossipAgent:
-    def __init__(self, aid, distribution = [1]*10, alpha=.5, sigma = .8, coord = [0,0]):
+    def __init__(self, aid, distribution=[1]*10, alpha=.5, sigma = .8, beta_num=11,
+                 coord=[0,0], lr=1e-4, combine_grad=False):
         # Store agent metadata (name, data, filepaths, log output
         # hyperparameters, etc)
         self.id = aid
@@ -20,15 +24,21 @@ class GossipAgent:
         self.model_fp = "./models/agent_{}/".format(aid)
         self.log_fp = "./logs/agent_{}/".format(aid)
         # TODO Import agent model, both for prediction and beta policy
-        self.beta_policy = BetaPolicy()
+        self.beta_num = beta_num  # Number of discrete beta values to choose from
+        self.beta_policy = BetaPolicy(4, beta_num)
+        self.beta_action = np.linspace(0, 1, beta_num)
+        self.beta_optimizer = torch.optim.Adam(self.beta_policy, lr=lr)
         self.model = MnistCnn()
+        self.optimizer = torch.optim.Adam(self.model, lr=lr)
         self.peer_model = MnistCnn()
-        self.optimizer = torch.optim.Adam(self.model, lr=1e-4)
         # Allocate reward structures
         self.local_acc = 0
+        self.loss = 0
+        self.peer_loss = 0
         self.peer_accs = []
         self.peer_ages = []
         self.peer_idmap = dict()
+        self.combine_grad = combine_grad
 
     def save_models(self, eps):
         torch.save(self.beta_policy.state_dict(), self.beta_fp + "episode_{}.pt".format(eps))
@@ -49,20 +59,23 @@ class GossipAgent:
         return result / denom
 
     def evaluate(self, model):
-        #todo complete this
         loss = 0
         AUC = 0
         for id, (data, label) in self.data:
             pred = model(data)
-            loss += torch.nn.MSELoss(pred, label)
+            loss += torch.nn.CrossEntropyLoss(pred, label)
+            # todo: check how to do auc
+            # fpr, tpr, thresholds = metrics.roc_curve(y, pred, pos_label=2)
+            auc = sklearn.metrics.auc(label, pred, )
+            # this is accuracy
             AUC = (AUC + torch.sum(torch.eq(pred, label)) / label.shape[0]) / 2
         return AUC, loss
 
     def local_step(self):
         # Train a local step on the model
-        self.local_acc, loss = eval(self.model)
+        self.local_acc, self.loss = self.evaluate(self.model)
         self.optimizer.zero_grad()
-        loss.backward()
+        self.loss.backward()
         self.optimizer.step()
 
     def update_peer_accs(self, oid, pacc):
@@ -80,8 +93,8 @@ class GossipAgent:
 
     def stage2_eval_peer(self, other):
         # Evaluate peer model locally (to compute accuracy & gradient)
-        self.peer_acc, self.peer_grad = self.evaluate(self.peer_model)
-        other.peer_acc, other.peer_grad = other.evaluate(other.peer_model)
+        self.peer_acc, self.peer_loss = self.evaluate(self.peer_model)
+        other.peer_acc, other.peer_loss = other.evaluate(other.peer_model)
 
     def stage3_comm_accs(self, other):
         # Transmit and receive model accuracies
@@ -101,18 +114,43 @@ class GossipAgent:
 
     def stage5_helper(self):
         # Given results of first 4 stages, update your local model
-        # Calculate beta value
-        beta = self.beta_policy(self.local_acc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer)
         # Calculate local gradient
-        local_grad = compute_gradient(self.model)
-        # Calculate gradient of peer model on local data
-        peer_grad = self.peer_grad # precomputed in stage2
-        # beta-weighted combined gradient
-        composite_grad = local_grad * beta + peer_grad * (1 - beta)
-        # 1-step of learning from gradient
-        self.model += learning_rate*composite_grad
+        self.local_acc, self.loss = self.evaluate(self.model)
 
-        #train beta using self.calculate_total_reward()
+        # Calculate beta value
+        policy = self.beta_policy(self.local_acc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer)
+        beta = np.random.choice(self.beta_action, p=policy)
+
+        # Calculate gradient of peer model on local data (already done in stage 2)
+
+        # Combine models
+        # Approach 1: combine gradients with beta-weight
+        if self.combine_grad:
+            self.optimizer.zero_grad()
+            self.loss.backward()
+            self.peer_loss.backward()
+            for local_param, peer_param in zip(self.model.parameters(), self.peer_model.parameters()):
+                local_param.grad = local_param.grad * beta + peer_param.grad * (1 - beta)
+                self.optimizer.step()  # 1-step of learning from gradient
+
+        # Approach 2: combine model parameters with beta-weight
+        # todo: might want to update model before stage 1 when using this approach
+        else:
+            state = self.model.state_dict()
+            peer_state = self.peer_model.state_dict()
+            for layer in state:
+                state[layer] = state[layer] * beta + peer_state[layer] * (1 - beta)
+            self.model.load_state_dict(state)  # is this step necessary?
+
+        # train beta using self.calculate_total_reward()
+        reward = self.alpha * self.local_acc + (1 - self.alpha) * self.other_rpeer
+        action_onehot = F.one_hot(np.where(self.beta_action == beta), self.beta_num)
+        beta_loss = torch.log(torch.clip(action_onehot * policy, 1e-10, 1.0)) * reward
+        self.beta_optimizer.zero_grad()
+        beta_loss.backward()
+        self.beta_optimizer.step()
+
+
 
     def load_agent_data(int_distribution):
         full_train, full_test = fetch_mnist_data()
