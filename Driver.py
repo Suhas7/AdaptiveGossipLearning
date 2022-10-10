@@ -1,11 +1,18 @@
+from absl import flags
+
 from GossipAgent import GossipAgent
-from agent_info import agent_info, NUM_AGENTS
+from agent_info import getAgentConfig
 import random as rd
+
+FLAGS = flags.FLAGS
+flags.DEFINE_string('agent_info_mode', None)
+flags.mark_flag_as_required('agent_info')
+flags.DEFINE_integer('local_step_freq', 5, lower_bound=1)
 
 class Driver:
 	def __init__(self, info):
 		# Hyperparameters
-		self.local_step_freq = 5 #number of local steps between each peer step.
+		self.local_step_freq = FLAGS.local_step_freq #number of local steps between each peer step.
 		self.adjacencies = info.adjacency_matrix
 		# Allocate agents
 		'''
@@ -17,11 +24,10 @@ class Driver:
 			alpha, sigma
 		'''
 		self.agents = dict()
-		for i in range(NUM_AGENTS):
-			self.agents[i] = GossipAgent(i, distribution=agent_info["dists"][i], 
-											alpha=agent_info["alpha"][i], 
-											sigma=agent_info["sigma"][i], 
-											coord = agent_info["start_coords"][i])
+		agentConfig = getAgentConfig(FLAGS.agent_info)
+		for i in range(FLAGS.num_agents):
+			self.agents[i] = GossipAgent(i, agentConfig.dists[i], agentConfig.alphas[i],
+				agentConfig.sigmas[i], agentConfig.start_coords[i])
 
 	def env_step(self):
 		# Execute all local steps

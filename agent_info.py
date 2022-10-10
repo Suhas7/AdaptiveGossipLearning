@@ -1,22 +1,28 @@
+from absl import flags
+
+from dataclasses import dataclass
 import numpy as np
+import numpy.typing as npt
 
-NUM_AGENTS = 10
-NUM_LABELS = 10
+FLAGS = flags.FLAGS
+flags.DEFINE_integer('num_agents', None, lower_bound=1)
+flags.mark_flag_as_required('num_agents')
+flags.DEFINE_integer('num_labels', None, lower_bound=1)
+flags.mark_flag_as_required('num_labels')
 
-DEFAULT_ALPHA = .5
-DEFAULT_SIGMA = .5
-DEFAULT_DISTRIBUTION = np.ones(NUM_LABELS)/NUM_LABELS
+@dataclass
+class AgentConfig:
+	alphas: npt.NDArray[np.float_]
+	sigmas: npt.NDArray[np.float_]
+	dists: list[npt.NDArray[np.float_]]
+	start_coords: list[tuple]
 
-
-alphas = DEFAULT_ALPHA * np.ones(NUM_AGENTS)
-sigmas = DEFAULT_SIGMA * np.ones(NUM_AGENTS)
-distributions = [DEFAULT_DISTRIBUTION for _ in range(NUM_AGENTS)]
-
-start_coords = [[0,0] for _ in range(NUM_AGENTS)]
-
-agent_info = {
-	"alphas":alphas,
-	"sigmas":sigmas,
-	"dists":distributions,
-	"start_coords":start_coords
-}
+def getAgentConfig(mode):
+	if mode == 'default':
+		return AgentConfig(
+			alphas=0.5*np.ones(FLAGS.num_agents),
+			sigmas=0.5*np.ones(FLAGS.num_agents),
+			dists=[np.ones(FLAGS.num_labels)/FLAGS.num_labels for _ in range(FLAGS.num_agents)],
+			start_coords=[(0,0) for _ in range(FLAGS.num_agents)])
+	else:
+		raise NotImplementedError(f"agent_info mode not implemented {mode}")
