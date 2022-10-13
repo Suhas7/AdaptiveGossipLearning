@@ -1,33 +1,36 @@
 # This class decides which peers should interact at any given timestep
 
+from absl import flags, logging
+
 import numpy as np
 from collections import defaultdict
 
+FLAGS = flags.FLAGS
+flags.DEFINE_integer('env_seed', 0, lower_bound=0, help='')
+flags.DEFINE_string('env_mode', 'grid', help='')
+flags.DEFINE_integer('env_grid_h', 10, lower_bound=1, help='')
+flags.DEFINE_integer('env_grid_w', 10, lower_bound=1, help='')
+
 class Environment:
-	def __init__(self, agent_ids, agent_pos=None, seed=None, mode="grid", grid_h=10, grid_w=10, node_count=10, edge_count=30):
+	def __init__(self, agent_ids, agent_pos, seed=None, mode="grid", grid_h=10, grid_w=10):
 		self.agent_ids = agent_ids
 		self.seed = seed
 		self.rng = np.random.default_rng(seed)
 		self.G = defaultdict(lambda: [])
+		self.agent_pos = dict()
 
 		if mode == 'grid':
 			self.grid_h = grid_h
 			self.grid_w = grid_w
 			self.build_grid(grid_h, grid_w)
-		elif mode == 'graph':
-			self.node_count = node_count
-			self.edge_count = edge_count
-			self.build_random_graph(node_count, edge_count)
 
-		if agent_pos is None:
-			self.agent_pos = {}
-			node_list = list(self.G.keys())
-			self.rng.shuffle(node_list)
-			for agent_id, pos in zip(agent_ids, node_list):
-				self.agent_pos[agent_id] = pos
-		else:
-			for agent_id, (x, y) in zip(agent_ids, agent_pos):
-				self.agent_pos[agent_id] = __grid2id(grid_h, grid_w, x, y)
+		for agent_id, (x, y) in zip(agent_ids, agent_pos):
+			self.agent_pos[agent_id] = self.__grid2id(grid_h, grid_w, x, y)
+
+		logging.info('Env initialized with {} agents.'.format(len(agent_pos)))
+
+		for i in agent_ids:
+			logging.debug('agent id {} at pos {}'.format(i, self.agent_pos[i]))
 
 	def __grid2id(self, grid_h, grid_w, x, y):
 		return grid_h * x + y
@@ -43,11 +46,8 @@ class Environment:
 						continue
 					self.G[self.__grid2id(grid_h, grid_w, i, j)].append(self.__grid2id(grid_h, grid_w, I, J))
 
-	def build_random_graph(self, node_count, edge_count):
-		# TODO
-		pass
-
 	def step(self):
+		logging.debug('env step start')
 		pos_agent_list = defaultdict(lambda: [])
 		for agent_id in self.agent_ids:
 			cur_node = self.agent_pos[agent_id]
@@ -62,7 +62,15 @@ class Environment:
 			for i in range(0, len(permu)-1, 2):
 				agent_pairs.append((agent_list[i], agent_list[i + 1]))
 
+		logging.debug('env step done with paired agent {}'.format(agent_pairs))
+		
 		return agent_pairs
+
+	def reset(self, agent_pos, seed=None):
+		self.agent_pos = agent_pos
+		if seed is not None:
+			self.seed = seed
+			self.rng = np.random.default_rng(seed)
 
 if __name__ == '__main__':
 	env = Environment([1, 2, 3, 4, 5], seed=0, mode="grid", grid_h=3, grid_w=3)

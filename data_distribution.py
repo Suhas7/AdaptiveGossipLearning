@@ -1,5 +1,7 @@
 from collections import defaultdict
+from torchvision import datasets, transforms
 import random
+
 
 def fetch_mnist_data():
     tensor_transform = transforms.Compose([transforms.ToTensor()])
@@ -34,7 +36,9 @@ class DataDistributor:
         :type data: List
         """
         for elem in data:
-            self.buckets[elem[1].item()].append(elem)
+            self.buckets[elem[1]].append(elem)
+    
+    # TODO: split data into training / validation sets
     def distribute_data(self, dist, num_elements):
         """
         Leverages Pythons random library to split data into non-iid subsets.
