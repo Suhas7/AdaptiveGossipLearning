@@ -9,7 +9,7 @@ Achieves 95% accuracy on this system.'''
 
 class MnistCnn(nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
+        super(MnistCnn, self).__init__()
         self.dropout_layer = nn.Dropout2d(0.4)
 
         self.conv1 = nn.Conv2d(1, 32, 3)

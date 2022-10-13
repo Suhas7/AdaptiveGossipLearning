@@ -2,18 +2,19 @@ from absl import flags
 
 from GossipAgent import GossipAgent
 from agent_info import getAgentConfig
+from Environment import Environment
 import random as rd
 
 FLAGS = flags.FLAGS
-flags.DEFINE_string('agent_info_mode', None)
-flags.mark_flag_as_required('agent_info')
-flags.DEFINE_integer('local_step_freq', 5, lower_bound=1)
+flags.DEFINE_string('agent_info_mode', None, help='')
+flags.mark_flag_as_required('agent_info_mode')
+flags.DEFINE_integer('local_step_freq', 5, lower_bound=1, help='')
 
 class Driver:
-	def __init__(self, info):
+	def __init__(self, num_agents, agent_info_mode, local_step_freq, n_train_img):
 		# Hyperparameters
-		self.local_step_freq = FLAGS.local_step_freq #number of local steps between each peer step.
-		self.adjacencies = info.adjacency_matrix
+		self.local_step_freq = local_step_freq  # number of local steps between each peer step.
+		
 		# Allocate agents
 		'''
 			Agent Name
@@ -24,33 +25,43 @@ class Driver:
 			alpha, sigma
 		'''
 		self.agents = dict()
-		agentConfig = getAgentConfig(FLAGS.agent_info)
-		for i in range(FLAGS.num_agents):
-			self.agents[i] = GossipAgent(i, agentConfig.dists[i], agentConfig.alphas[i],
-				agentConfig.sigmas[i], agentConfig.start_coords[i])
+		agentConfig = getAgentConfig(agent_info_mode)
+		for i in range(num_agents):
+			self.agents[i] = GossipAgent(
+				aid=i, 
+				distribution=agentConfig.dists[i],
+				alpha=agentConfig.alphas[i],
+				sigma=agentConfig.sigmas[i],
+				coord=agentConfig.start_coords[i],
+				n_train_img=n_train_img
+			)
+		
+		# Environment
+		self.env = Environment(
+			agent_ids=list(range(num_agents)), 
+			agent_pos=agentConfig.start_coords,
+			seed=FLAGS.env_seed,
+			mode=FLAGS.env_mode,
+			grid_h=FLAGS.env_grid_h,
+			grid_w=FLAGS.env_grid_w
+		)
+		
+		# Environment data
+		self.episode_count = 0
 
 	def env_step(self):
 		# Execute all local steps
 		for _ in range(self.local_step_freq):
-			for key,agent in self.agents.items():
+			for key, agent in self.agents.items():
 				agent.local_step()
-		# Execute peer step
-		#TODO split this out as "environment" object
-		pairs = [] # TODO calculate each pair of peers to interact based on adjacency graph/random walk
-		visited = set()
-		for agent1 in self.agents.keys()
-			if agent1 in visited: continue
-			if len(visited) + 1 >= len(self.agents.keys()): continue
-			visited.add(agent1)
-			agent2 = rd.select(self.agents.keys())
-			if agent2 not in visited:
-				pairs.append((self.agents[agent1],self.agents[agent2]))
-				visited.add(agent2)
 
-		for pr in pairs:
+		agent_pairs = self.env.step()
+		for pr in agent_pairs:
 			# Note that there is one primary and one secondary peer.
 			# This chooses arbitrarily who communicates first, for simplicity
-			peer_step(pr[0], pr[1])
+			self.peer_step(pr[0], pr[1])
+		
+		self.episode_count += 1
 
 	def peer_step(self, agentA, agentB):
 		# Given a peer, communicate with them using following helper function
@@ -60,3 +71,6 @@ class Driver:
 		agentA.stage3_comm_accs(agentB)
 		agentA.stage4_comm_rpeer(agentB)
 		agentA.stage5_local_updates(agentB)
+		agentA.save_models(self.episode_count)
+		agentB.save_models(self.episode_count)
+		

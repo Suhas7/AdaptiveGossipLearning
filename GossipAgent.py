@@ -2,50 +2,63 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from data_distribution import *
-from agent_info import NUM_AGENTS
-from BetaPolicy import BetaPolicy
-from MnistCnn import MnistCnn
-#todo import Model, BetaPolicy
-from sklearn import metrics
+from torch.utils.data import TensorDataset, DataLoader
 
+from data_distribution import fetch_mnist_data, DataDistributor
+from BetaPolicy import BetaPolicy
+from MnistCNN import MnistCnn
+from sklearn import metrics
+from absl import flags
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+''''''
 class GossipAgent:
     def __init__(self, aid, distribution=[1]*10, alpha=.5, sigma = .8, beta_num=11,
-                 coord=[0,0], lr=1e-4, combine_grad=False):
-        # Store agent metadata (name, data, filepaths, log output
-        # hyperparameters, etc)
+                 coord=[0,0], lr=1e-4, combine_grad=False, n_train_img=1000):
+        # Agent metadata and hyper-parameters
         self.id = aid
         self.alpha = alpha
         self.sigma = sigma
-        # TODO: data
-        self.data = self.load_agent_data(distribution)
+        self.n_train_img = n_train_img
+
+        # TODO: Load test data as well
+        # XXX: change this to correct training data
+        self.data = fetch_mnist_data()[0]
+        # self.data = TensorDataset(torch.cat(self.load_agent_data(distribution)))
+        # print(self.data[0])
+        self.dataloader = DataLoader(self.data, batch_size=32, shuffle=True)
+
+        # Import agent model, both for prediction and beta policy
+        self.beta_num = beta_num  # Number of discrete beta values to choose from
+        self.beta_policy = BetaPolicy(4, beta_num)
+        self.beta_action = np.linspace(0, 1, beta_num)
+        self.beta_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
+        self.model = MnistCnn()
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        self.peer_model = MnistCnn()
+
         # Model & Log Outputs
         self.beta_fp = "./betas/agent_{}/".format(aid)
         self.model_fp = "./models/agent_{}/".format(aid)
         self.log_fp = "./logs/agent_{}/".format(aid)
-        # TODO Import agent model, both for prediction and beta policy
-        self.beta_num = beta_num  # Number of discrete beta values to choose from
-        self.beta_policy = BetaPolicy(4, beta_num)
-        self.beta_action = np.linspace(0, 1, beta_num)
-        self.beta_optimizer = torch.optim.Adam(self.beta_policy, lr=lr)
-        self.model = MnistCnn()
-        self.optimizer = torch.optim.Adam(self.model, lr=lr)
-        self.peer_model = MnistCnn()
+
         # Allocate reward structures
-        self.local_acc = 0
+        self.local_auc = 0
         self.loss = 0
         self.peer_loss = 0
         self.peer_accs = []
         self.peer_ages = []
         self.peer_idmap = dict()
         self.combine_grad = combine_grad
+        self.local_auc_history = []
 
     def save_models(self, eps):
         torch.save(self.beta_policy.state_dict(), self.beta_fp + "episode_{}.pt".format(eps))
         torch.save(self.MnistCnn.state_dict(), self.model_fp + "episode_{}.pt".format(eps))
 
     def calculate_total_reward(self):
-        return self.local_acc + self.calculate_rpeer()
+        return self.local_auc + self.calculate_rpeer()
 
     def calculate_rpeer(self):
         result = 0
@@ -59,21 +72,25 @@ class GossipAgent:
         return result / denom
 
     def evaluate(self, model):
-        loss = 0
-        AUC = 0
-        # todo: can we do this in one step?
-        for id, (data, label) in self.data:
+        loss = torch.tensor(0).float()
+        labels = []
+        preds = []
+        for data, label in self.dataloader:
             pred = model(data)
-            loss += torch.nn.CrossEntropyLoss(pred, label)
-            auc = metrics.roc_auc_score(label, pred)
-            AUC += auc
-            # this is accuracy
-            # AUC = (AUC + torch.sum(torch.eq(pred, label)) / label.shape[0]) / 2
-        return AUC, loss
+            loss += torch.nn.functional.cross_entropy(pred, label)
+            labels.append(label)
+            preds.append(pred)
+
+        labels = torch.cat(labels)
+        preds = torch.cat(preds)
+        auc = metrics.roc_auc_score(labels.numpy(), preds.numpy())
+        if model == self.model:
+            self.local_auc_history.append(auc)
+        return auc, loss
 
     def local_step(self):
         # Train a local step on the model
-        self.local_acc, self.loss = self.evaluate(self.model)
+        self.local_auc, self.loss = self.evaluate(self.model)
         self.optimizer.zero_grad()
         self.loss.backward()
         self.optimizer.step()
@@ -115,10 +132,10 @@ class GossipAgent:
     def stage5_helper(self):
         # Given results of first 4 stages, update your local model
         # Calculate local gradient
-        self.local_acc, self.loss = self.evaluate(self.model)
+        self.local_auc, self.loss = self.evaluate(self.model)
 
         # Calculate beta value
-        policy = self.beta_policy(self.local_acc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer)
+        policy = self.beta_policy(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer)
         beta = np.random.choice(self.beta_action, p=policy)
 
         # Calculate gradient of peer model on local data (already done in stage 2)
@@ -143,19 +160,16 @@ class GossipAgent:
             self.model.load_state_dict(state)  # is this step necessary?
 
         # train beta using self.calculate_total_reward()
-        reward = self.alpha * self.local_acc + (1 - self.alpha) * self.calculate_rpeer()
+        reward = self.alpha * self.local_auc + (1 - self.alpha) * self.calculate_rpeer()
         action_onehot = F.one_hot(np.where(self.beta_action == beta), self.beta_num)
         beta_loss = torch.log(torch.clip(action_onehot * policy, 1e-10, 1.0)) * reward
         self.beta_optimizer.zero_grad()
         beta_loss.backward()
         self.beta_optimizer.step()
 
-
-
-    def load_agent_data(int_distribution):
+    # TODO: maybe move this into Driver, have a central distributor to assign data
+    def load_agent_data(self,int_distribution):
         full_train, full_test = fetch_mnist_data()
         train_distributor = DataDistributor(full_train, 10)
-        return train_distributor.distribute_data(int_distribution, args.n_train)
-        #test_distributor = DataDistributor(full_test, 10)
-        #test = test_distributor.distribute_data(int_distribution, args.n_test)
+        return train_distributor.distribute_data(int_distribution, self.n_train_img)
 

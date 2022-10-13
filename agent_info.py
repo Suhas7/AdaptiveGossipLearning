@@ -5,9 +5,9 @@ import numpy as np
 import numpy.typing as npt
 
 FLAGS = flags.FLAGS
-flags.DEFINE_integer('num_agents', None, lower_bound=1)
+flags.DEFINE_integer('num_agents', None, lower_bound=1, help='')
 flags.mark_flag_as_required('num_agents')
-flags.DEFINE_integer('num_labels', None, lower_bound=1)
+flags.DEFINE_integer('num_labels', None, lower_bound=1, help='')
 flags.mark_flag_as_required('num_labels')
 
 @dataclass
