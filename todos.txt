@@ -1,3 +1,16 @@
+
+# 10/13/2022
+
+## Soft DL: 10/18
+
+* make code GPU compatible (Zejian)
+* fix TODO in GossipAgent (Zejian)
+* move data_distribution inside Driver (driver split data into `num_agents` parts, don't need to be a partition, and then pass it to agent) (Suhas)
+* data collection (tensorboard) (Robert)
+  * beta_value (for each agent / iteration), local reward (per agent), peer reward (per agent), total reward (local+peer)
+  * evaluation f1_score on test_data (inside main)
+  * agent_pairs each round (think about ways to visualize that e.g. nxn matrix?)
+
 # 10/05/2022
 
 ## DL: 10/09/2022
