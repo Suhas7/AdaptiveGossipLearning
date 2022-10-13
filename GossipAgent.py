@@ -7,7 +7,7 @@ from agent_info import NUM_AGENTS
 from BetaPolicy import BetaPolicy
 from MnistCnn import MnistCnn
 #todo import Model, BetaPolicy
-import sklearn
+from sklearn import metrics
 
 class GossipAgent:
     def __init__(self, aid, distribution=[1]*10, alpha=.5, sigma = .8, beta_num=11,
@@ -61,14 +61,14 @@ class GossipAgent:
     def evaluate(self, model):
         loss = 0
         AUC = 0
+        # todo: can we do this in one step?
         for id, (data, label) in self.data:
             pred = model(data)
             loss += torch.nn.CrossEntropyLoss(pred, label)
-            # todo: check how to do auc
-            # fpr, tpr, thresholds = metrics.roc_curve(y, pred, pos_label=2)
-            auc = sklearn.metrics.auc(label, pred, )
+            auc = metrics.roc_auc_score(label, pred)
+            AUC += auc
             # this is accuracy
-            AUC = (AUC + torch.sum(torch.eq(pred, label)) / label.shape[0]) / 2
+            # AUC = (AUC + torch.sum(torch.eq(pred, label)) / label.shape[0]) / 2
         return AUC, loss
 
     def local_step(self):
