@@ -3,12 +3,14 @@ from absl import flags, logging
 from GossipAgent import GossipAgent
 from agent_info import getAgentConfig
 from Environment import Environment
+from data_distribution import fetch_mnist_data, DataDistributor
+
 import random as rd
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string('agent_info_mode', None, help='')
 flags.mark_flag_as_required('agent_info_mode')
-flags.DEFINE_integer('local_step_freq', 5, lower_bound=0, help='')
+flags.DEFINE_integer('local_step_freq', 5, lower_bound=1, help='')
 
 class Driver:
 	def __init__(self, num_agents, agent_info_mode, local_step_freq, n_train_img):
@@ -17,7 +19,7 @@ class Driver:
 		
 		# Allocate agents
 		'''
-			Agent Name		
+			Agent Name
 			name of model to use
 			log filepath
 			Data distribution
@@ -26,14 +28,15 @@ class Driver:
 		'''
 		self.agents = dict()
 		agentConfig = getAgentConfig(agent_info_mode)
+		self.n_train_img=n_train_img
+
 		for i in range(num_agents):
 			self.agents[i] = GossipAgent(
 				aid=i, 
-				distribution=agentConfig.dists[i],
+				data = self.load_agent_data(agentConfig.dists[i]),
 				alpha=agentConfig.alphas[i],
 				sigma=agentConfig.sigmas[i],
 				coord=agentConfig.start_coords[i],
-				n_train_img=n_train_img
 			)
 			logging.debug('Driver: agents {} created'.format(i))
 
@@ -77,7 +80,11 @@ class Driver:
 		agentA.stage3_comm_accs(agentB)
 		agentA.stage4_comm_rpeer(agentB)
 		agentA.stage5_local_updates(agentB)
-		# agentA.save_models(self.episode_count)
-		# agentB.save_models(self.episode_count)
-		
-		logging.debug('Peer step completed between agents %d and %d' % (agentA.id, agentB.id))
+		#agentA.save_models(self.episode_count)
+		#agentB.save_models(self.episode_count)
+	
+	def load_agent_data(self,int_distribution):
+		full_train, full_test = fetch_mnist_data()
+		train_distributor = DataDistributor(full_train, 10)
+		return train_distributor.distribute_data(int_distribution, self.n_train_img)
+

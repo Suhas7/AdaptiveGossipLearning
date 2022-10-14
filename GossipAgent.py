@@ -6,7 +6,6 @@ import os
 
 from torch.utils.data import TensorDataset, DataLoader
 
-from data_distribution import fetch_mnist_data, DataDistributor
 from BetaPolicy import BetaPolicy
 from MnistCNN import MnistCnn
 from sklearn import metrics
@@ -16,18 +15,16 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 ''''''
 class GossipAgent:
-    def __init__(self, aid, distribution=[1]*10, alpha=.5, sigma = .8, beta_num=11,
-                 coord=[0,0], lr=1e-4, combine_grad=False, n_train_img=1000):
+    def __init__(self, aid, data, alpha=.5, sigma = .8, beta_num=11,
+                 coord=[0,0], lr=1e-4, combine_grad=False):
         # Agent metadata and hyper-parameters
         self.id = aid
         self.alpha = alpha
         self.sigma = sigma
-        self.n_train_img = n_train_img
 
         # TODO: Load test data as well
         # XXX: change this to correct training data
-        self.data = fetch_mnist_data()[0]
-        logging.debug('Size of data set %d' % len(self.data))
+        self.data = data
         # self.data = TensorDataset(torch.cat(self.load_agent_data(distribution)))
         # print(self.data[0])
         self.dataloader = DataLoader(self.data, batch_size=64, shuffle=True)
@@ -192,10 +189,3 @@ class GossipAgent:
         self.beta_optimizer.zero_grad()
         beta_loss.backward()
         self.beta_optimizer.step()
-
-    # TODO: maybe move this into Driver, have a central distributor to assign data
-    def load_agent_data(self,int_distribution):
-        full_train, full_test = fetch_mnist_data()
-        train_distributor = DataDistributor(full_train, 10)
-        return train_distributor.distribute_data(int_distribution, self.n_train_img)
-
