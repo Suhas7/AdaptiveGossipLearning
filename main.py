@@ -1,7 +1,8 @@
-from absl import app
-from absl import flags, logging
+import random
+
+import torch.random
+from absl import app, flags, logging
 from Driver import Driver
-from sklearn import metrics
 from data_distribution import fetch_mnist_data
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,11 +17,24 @@ flags.mark_flag_as_required('num_env_steps')
 flags.DEFINE_integer('n_train_img', 1000, lower_bound=2, help='')
 
 def main(argv):
+	random.seed(0)
+	np.random.seed(0)
+	torch.manual_seed(0)
+
+	# Select device
+	if torch.cuda.is_available():
+		device = torch.device('cuda')
+	elif torch.backends.mps.is_available():
+		device = torch.device('mps')
+	else:
+		device = torch.device('cpu')
+
 	driver = Driver(
 		num_agents		= FLAGS.num_agents, 
 		agent_info_mode	= FLAGS.agent_info_mode, 
 		local_step_freq	= FLAGS.local_step_freq,
-		n_train_img 	= FLAGS.n_train_img
+		n_train_img 	= FLAGS.n_train_img,
+		device          = device
 	)
 
 	# Dictionary to store performance at each step
@@ -36,17 +50,20 @@ def main(argv):
 	for i in range(FLAGS.num_env_steps):
 		logging.debug("Beginning env_step {}".format(i))
 		driver.env_step()
-		logging.debug("Env step #%d",i)
+		logging.debug("Env step #%d", i)
 		# Test each agent model against test dataset
 		for id, agent in driver.agents.items():
 			aucs[id].append(agent.evaluate(agent.model, test_dataloader)[0])
 	
 	print(aucs)
 	x = np.arange(FLAGS.num_env_steps)
-	y = aucs[0]
-	plt.plot(x,y)
-	plt.savefig("Agent 0 Curve")
+	y0 = aucs[0]
+	y1 = aucs[1]
+	plt.plot(x, y0)
+	plt.plot(x, y1)
+	plt.savefig("Agents Curve")
 	plt.show()
+
 	
 
 if __name__ == '__main__':

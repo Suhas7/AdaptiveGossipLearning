@@ -1,4 +1,6 @@
 from collections import defaultdict
+from tqdm import tqdm
+import torch
 from torchvision import datasets, transforms
 import random
 
@@ -9,8 +11,7 @@ def fetch_mnist_data():
     full_test = datasets.MNIST(root='./data', train=False, download=True, transform=tensor_transform)
     return full_train, full_test
 
-
-## Assumes data is not a tensor
+# Assumes data is not a tensor
 class DataDistributor:
     """
     Distributes data according to a predefined distribution. 
@@ -21,13 +22,14 @@ class DataDistributor:
     :type data: List
     :type num_classes: int
     """
-    def __init__(self, data, num_classes):
+    def __init__(self, data, num_classes, device):
         self.classes = num_classes
+        self.device = device
         self.buckets = defaultdict(list)
         self.assign_data(data)
 
-    ### Collects data into according buckets based on precomputed bucket assignment
-    def assign_data(self, data):
+    # Collects data into according buckets based on precomputed bucket assignment
+    def assign_data(self, dataset):
         """
         Places data into according buckets based on precomputed bucket assignment.
 
@@ -35,9 +37,16 @@ class DataDistributor:
         
         :type data: List
         """
-        for elem in data:
+        for elem in tqdm(dataset, desc="Partition dataset based on labels"):
             self.buckets[elem[1]].append(elem)
-    
+
+        '''Use this if want to move all data to gpu at first'''
+        # image = dataset.data.to(self.device)
+        # label = dataset.targets.to(self.device)
+        #
+        # for (image, label) in tqdm(zip(image, label), total=image.shape[0]):
+        #     self.buckets[label.item()].append((image, label))
+
     # TODO: split data into training / validation sets
     def distribute_data(self, dist, num_elements):
         """

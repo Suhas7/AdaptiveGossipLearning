@@ -1,3 +1,6 @@
+import copy
+
+import torch
 from absl import flags, logging
 
 from GossipAgent import GossipAgent
@@ -5,7 +8,6 @@ from agent_info import getAgentConfig
 from Environment import Environment
 from data_distribution import fetch_mnist_data, DataDistributor
 
-import random as rd
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string('agent_info_mode', None, help='')
@@ -13,9 +15,13 @@ flags.mark_flag_as_required('agent_info_mode')
 flags.DEFINE_integer('local_step_freq', 5, lower_bound=1, help='')
 
 class Driver:
-	def __init__(self, num_agents, agent_info_mode, local_step_freq, n_train_img):
+	def __init__(self, num_agents, agent_info_mode, local_step_freq, n_train_img, device):
 		# Hyperparameters
 		self.local_step_freq = local_step_freq  # number of local steps between each peer step.
+
+		# Create training data distributor
+		full_train = fetch_mnist_data()[0]
+		self.distributor = DataDistributor(full_train, num_classes=FLAGS.num_class, device=device)
 		
 		# Allocate agents
 		'''
@@ -28,15 +34,16 @@ class Driver:
 		'''
 		self.agents = dict()
 		agentConfig = getAgentConfig(agent_info_mode)
-		self.n_train_img=n_train_img
+		self.n_train_img = n_train_img
 
 		for i in range(num_agents):
 			self.agents[i] = GossipAgent(
-				aid=i, 
-				data = self.load_agent_data(agentConfig.dists[i]),
+				aid=i,
+				data=self.distributor.distribute_data(agentConfig.dists[i], self.n_train_img),
 				alpha=agentConfig.alphas[i],
 				sigma=agentConfig.sigmas[i],
 				coord=agentConfig.start_coords[i],
+				device=device
 			)
 			logging.debug('Driver: agents {} created'.format(i))
 
@@ -65,7 +72,7 @@ class Driver:
 			# Note that there is one primary and one secondary peer.
 			# This chooses arbitrarily who communicates first, for simplicity
 			self.peer_step(pr[0], pr[1])
-		logging.debug("Completed episode %d",self.episode_count)
+		logging.debug("Completed episode %d", self.episode_count)
 		self.episode_count += 1
 
 	def peer_step(self, agentA, agentB):
@@ -83,8 +90,9 @@ class Driver:
 		#agentA.save_models(self.episode_count)
 		#agentB.save_models(self.episode_count)
 	
-	def load_agent_data(self,int_distribution):
-		full_train, full_test = fetch_mnist_data()
-		train_distributor = DataDistributor(full_train, 10)
-		return train_distributor.distribute_data(int_distribution, self.n_train_img)
+	# def load_agent_data(self, int_distribution):
+		# TODO: we're creating 1 distributor for 1 agent now, maybe we should use 1 distributor for all agents
+	# 	full_train, full_test = fetch_mnist_data()
+	# 	train_distributor = DataDistributor(full_train, num_classes=FLAGS.num_class)
+	# 	return train_distributor.distribute_data(int_distribution, self.n_train_img)
 

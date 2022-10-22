@@ -7,8 +7,8 @@ import numpy.typing as npt
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('num_agents', None, lower_bound=1, help='')
 flags.mark_flag_as_required('num_agents')
-flags.DEFINE_integer('num_labels', None, lower_bound=1, help='')
-flags.mark_flag_as_required('num_labels')
+flags.DEFINE_integer('num_class', None, lower_bound=1, help='')
+flags.mark_flag_as_required('num_class')
 
 @dataclass
 class AgentConfig:
@@ -22,7 +22,7 @@ def getAgentConfig(mode):
 		return AgentConfig(
 			alphas=0.5*np.ones(FLAGS.num_agents),
 			sigmas=0.5*np.ones(FLAGS.num_agents),
-			dists=[np.ones(FLAGS.num_labels)/FLAGS.num_labels for _ in range(FLAGS.num_agents)],
-			start_coords=[(0,0) for _ in range(FLAGS.num_agents)])
+			dists=[np.ones(FLAGS.num_class)/FLAGS.num_class for _ in range(FLAGS.num_agents)],
+			start_coords=[(0, 0) for _ in range(FLAGS.num_agents)])
 	else:
 		raise NotImplementedError(f"agent_info mode not implemented {mode}")

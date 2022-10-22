@@ -51,7 +51,8 @@ class Environment:
 		pos_agent_list = defaultdict(lambda: [])
 		for agent_id in self.agent_ids:
 			cur_node = self.agent_pos[agent_id]
-			next_node = self.rng.choice(self.G[cur_node])
+			# next_node = self.rng.choice(self.G[cur_node])
+			next_node = cur_node
 
 			self.agent_pos[agent_id] = next_node
 			pos_agent_list[next_node].append(agent_id)
@@ -71,6 +72,7 @@ class Environment:
 		if seed is not None:
 			self.seed = seed
 			self.rng = np.random.default_rng(seed)
+
 
 if __name__ == '__main__':
 	env = Environment([1, 2, 3, 4, 5], seed=0, mode="grid", grid_h=3, grid_w=3)
