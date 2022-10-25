@@ -1,4 +1,10 @@
 
+# 10/24/2022
+
+## Some possible questions about our current method
+
+* Weight average of beta might not work i.e. averaging two good models' weight probably won't work. In Decentralized Federated Learning via Mutual Knowledge Transfer, instead of using their weights directly, they incorporate peer knowledge by learning peer's "soft prediction".
+
 # 10/13/2022
 
 ## Soft DL: 10/18
