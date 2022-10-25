@@ -24,5 +24,14 @@ def getAgentConfig(mode):
 			sigmas=0.5*np.ones(FLAGS.num_agents),
 			dists=[np.ones(FLAGS.num_class)/FLAGS.num_class for _ in range(FLAGS.num_agents)],
 			start_coords=[(0, 0) for _ in range(FLAGS.num_agents)])
+	elif mode == 'extreme':
+		dists = [np.zeros(FLAGS.num_class) for _ in range(FLAGS.num_agents)]
+		dists[0][:5] = 0.2
+		dists[1][5:] = 0.2
+		return AgentConfig(
+			alphas=0.5 * np.ones(FLAGS.num_agents),
+			sigmas=0.5 * np.ones(FLAGS.num_agents),
+			dists=dists,
+			start_coords=[(0, 0) for _ in range(FLAGS.num_agents)])
 	else:
 		raise NotImplementedError(f"agent_info mode not implemented {mode}")

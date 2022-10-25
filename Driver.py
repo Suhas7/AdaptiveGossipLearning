@@ -12,7 +12,9 @@ from data_distribution import fetch_mnist_data, DataDistributor
 FLAGS = flags.FLAGS
 flags.DEFINE_string('agent_info_mode', None, help='')
 flags.mark_flag_as_required('agent_info_mode')
-flags.DEFINE_integer('local_step_freq', 5, lower_bound=1, help='')
+flags.DEFINE_integer('local_step_freq', 5, lower_bound=0, help='')
+flags.DEFINE_bool('combine_grad', False, help='')
+
 
 class Driver:
 	def __init__(self, num_agents, agent_info_mode, local_step_freq, n_train_img, device):
@@ -43,6 +45,7 @@ class Driver:
 				alpha=agentConfig.alphas[i],
 				sigma=agentConfig.sigmas[i],
 				coord=agentConfig.start_coords[i],
+				combine_grad=FLAGS.combine_grad,
 				device=device
 			)
 			logging.debug('Driver: agents {} created'.format(i))

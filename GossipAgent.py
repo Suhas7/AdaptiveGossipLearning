@@ -69,19 +69,19 @@ class GossipAgent:
     def evaluate(self, model, dataloader):
         # TODO: add option to sample from dataset to evaluate model
         model.eval()
-        with torch.no_grad():
-            loss = 0
-            labels = []
-            preds = []
+        loss = 0
+        labels = []
+        preds = []
+        with torch.set_grad_enabled(self.combine_grad):
             for data, label in tqdm(dataloader, desc="Evaluating"):
                 pred = model(data.to(self.device))
-                loss += torch.nn.functional.cross_entropy(pred, label.to(self.device)).item()
+                loss += torch.nn.functional.cross_entropy(pred, label.to(self.device))
                 labels.append(label)
                 preds.append(pred)
 
             labels = torch.cat(labels)
             preds = torch.argmax(torch.cat(preds), dim=1)
-            auc = metrics.f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='macro')
+            auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(), average='macro')
 
             if model == self.model:
                 self.local_auc_history.append(auc)
@@ -148,7 +148,7 @@ class GossipAgent:
         # Calculate beta value
         policy = self.beta_policy(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer)
         beta = np.random.choice(self.beta_action, p=policy.detach().cpu().numpy())
-        # beta = 1
+        # beta = 0.5
 
         # Calculate gradient of peer model on local data (already done in stage 2)
 
@@ -159,7 +159,8 @@ class GossipAgent:
             self.loss.backward()
             self.peer_loss.backward()
             for local_param, peer_param in zip(self.model.parameters(), self.peer_model.parameters()):
-                local_param.grad = local_param.grad * beta + peer_param.grad * (1 - beta)
+                if local_param.grad != None and peer_param.grad != None:
+                    local_param.grad = local_param.grad * beta + peer_param.grad * (1 - beta)
                 self.optimizer.step()  # 1-step of learning from gradient
 
         # Approach 2: combine model parameters with beta-weight
