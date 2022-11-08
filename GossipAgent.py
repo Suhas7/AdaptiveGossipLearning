@@ -73,7 +73,7 @@ class GossipAgent:
         labels = []
         preds = []
         with torch.set_grad_enabled(self.combine_grad):
-            for data, label in tqdm(dataloader, desc="Evaluating"):
+            for data, label in tqdm(dataloader, desc=f"{self.id} Evaluating", leave=False):
                 pred = model(data.to(self.device))
                 loss += torch.nn.functional.cross_entropy(pred, label.to(self.device))
                 labels.append(label)

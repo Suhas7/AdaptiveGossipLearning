@@ -17,54 +17,63 @@ flags.mark_flag_as_required('num_env_steps')
 flags.DEFINE_integer('n_train_img', 1000, lower_bound=2, help='')
 
 def main(argv):
-	random.seed(0)
-	np.random.seed(0)
-	torch.manual_seed(0)
+    random.seed(0)
+    np.random.seed(0)
+    torch.manual_seed(0)
 
-	# Select device
-	if torch.cuda.is_available():
-		device = torch.device('cuda')
-	elif torch.backends.mps.is_available():
-		device = torch.device('mps')
-	else:
-		device = torch.device('cpu')
+    # Select device
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+    elif torch.backends.mps.is_available():
+        device = torch.device('mps')
+    else:
+        device = torch.device('cpu')
 
-	driver = Driver(
-		num_agents		= FLAGS.num_agents, 
-		agent_info_mode	= FLAGS.agent_info_mode, 
-		local_step_freq	= FLAGS.local_step_freq,
-		n_train_img 	= FLAGS.n_train_img,
-		device          = device
-	)
+    driver = Driver(
+        num_agents      = FLAGS.num_agents, 
+        agent_info_mode = FLAGS.agent_info_mode, 
+        local_step_freq = FLAGS.local_step_freq,
+        n_train_img     = FLAGS.n_train_img,
+        device          = device
+    )
 
-	# Dictionary to store performance at each step
-	aucs = dict()
-	for id in driver.agents.keys():
-		aucs[id] = list()
+    # Dictionary to store performance at each step
+    aucs = dict()
+    local_aucs = dict()
+    for id in driver.agents.keys():
+        aucs[id] = list()
+        local_aucs[id] = list()
 
-	# Fetch test dataset
-	_, full_test = fetch_mnist_data()
-	test_dataloader = DataLoader(full_test, batch_size=64, shuffle=True)
+    # Fetch test dataset
+    _, full_test = fetch_mnist_data()
+    test_dataloader = DataLoader(full_test, batch_size=64, shuffle=True)
 
-	# Run environment
-	for i in range(FLAGS.num_env_steps):
-		logging.debug("Beginning env_step {}".format(i))
-		driver.env_step()
-		logging.debug("Env step #%d", i)
-		# Test each agent model against test dataset
-		for id, agent in driver.agents.items():
-			aucs[id].append(agent.evaluate(agent.model, test_dataloader)[0])
-	
-	print(aucs)
-	x = np.arange(FLAGS.num_env_steps)
-	y0 = aucs[0]
-	y1 = aucs[1]
-	plt.plot(x, y0)
-	plt.plot(x, y1)
-	plt.savefig("Agents Curve")
-	plt.show()
+    # Run environment
+    for i in range(FLAGS.num_env_steps):
+        logging.debug("Beginning env_step {}".format(i))
+        driver.env_step()
+        logging.debug("Env step #%d", i)
+        # Test each agent model against test dataset
+        for id, agent in driver.agents.items():
+            aucs[id].append(agent.evaluate(agent.model, test_dataloader)[0])
+            local_aucs[id].append(agent.evaluate(agent.model, agent.dataloader)[0])
+    
+    print(aucs)
+    x = np.arange(FLAGS.num_env_steps)
+    y0 = aucs[0]
+    y1 = aucs[1]
+    plt.plot(x, y0)
+    plt.plot(x, y1)
+    plt.savefig("Agents Curve", bbox_inches='tight')
+    #plt.show()
 
-	
+    print(local_auc)
+    y0 = local_auc[0]
+    y1 = local_auc[1]
+    plt.plot(x, y0)
+    plt.plot(x, y1)
+    plt.savefig("Agents local test Curve", bbox_inches='tight')
+    #plt.show()
 
 if __name__ == '__main__':
-	app.run(main)
+    app.run(main)
