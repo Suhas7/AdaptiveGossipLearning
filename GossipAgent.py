@@ -91,7 +91,7 @@ class GossipAgent:
     def local_step(self, steps=1):
         # Train `steps` local step on the model
         self.model.train()
-        for i, (data, label) in tqdm(enumerate(self.dataloader), total=steps, desc="Training"):
+        for i, (data, label) in tqdm(enumerate(self.dataloader), total=steps, desc=f"{self.id} Training", leave=False):
             if i >= steps:
                 break
             pred = self.model(data.to(self.device))

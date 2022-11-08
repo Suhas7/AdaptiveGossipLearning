@@ -60,19 +60,18 @@ def main(argv):
     
     print(aucs)
     x = np.arange(FLAGS.num_env_steps)
-    y0 = aucs[0]
-    y1 = aucs[1]
-    plt.plot(x, y0)
-    plt.plot(x, y1)
+    for id in driver.agents.keys():
+        plt.plot(x, aucs[id], label=f'{id}')
     plt.savefig("Agents Curve", bbox_inches='tight')
+    plt.clf()
     #plt.show()
 
-    print(local_auc)
-    y0 = local_auc[0]
-    y1 = local_auc[1]
-    plt.plot(x, y0)
-    plt.plot(x, y1)
+    print(local_aucs)
+    x = np.arange(FLAGS.num_env_steps)
+    for id in driver.agents.keys():
+        plt.plot(x, local_aucs[id], label=f'{id}')
     plt.savefig("Agents local test Curve", bbox_inches='tight')
+    plt.clf()
     #plt.show()
 
 if __name__ == '__main__':
