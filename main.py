@@ -46,7 +46,7 @@ def main(argv):
 
     # Fetch test dataset
     _, full_test = fetch_mnist_data()
-    test_dataloader = DataLoader(full_test, batch_size=64, shuffle=True)
+    test_dataloader = DataLoader(full_test, batch_size=256, shuffle=False)
 
     # Run environment
     for i in range(FLAGS.num_env_steps):
@@ -62,6 +62,7 @@ def main(argv):
     x = np.arange(FLAGS.num_env_steps)
     for id in driver.agents.keys():
         plt.plot(x, aucs[id], label=f'{id}')
+    plt.legend()
     plt.savefig("Agents Curve", bbox_inches='tight')
     plt.clf()
     #plt.show()
@@ -70,6 +71,7 @@ def main(argv):
     x = np.arange(FLAGS.num_env_steps)
     for id in driver.agents.keys():
         plt.plot(x, local_aucs[id], label=f'{id}')
+    plt.legend()
     plt.savefig("Agents local test Curve", bbox_inches='tight')
     plt.clf()
     #plt.show()

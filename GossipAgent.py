@@ -21,7 +21,9 @@ class GossipAgent:
         # TODO: Load test data as well
         # XXX: change this to correct training data
         self.data = data
+        logging.info(f'agent {self.id} data size {len(data)}')
         self.dataloader = DataLoader(self.data, batch_size=64, shuffle=True)
+        logging.info(f'agent {self.id} step per epoch {len(self.dataloader)}')
         self.device = device
 
         # Import agent model, both for prediction and beta policy
