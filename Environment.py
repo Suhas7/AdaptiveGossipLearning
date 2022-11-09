@@ -8,8 +8,8 @@ from collections import defaultdict
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('env_seed', 0, lower_bound=0, help='')
 flags.DEFINE_string('env_mode', 'grid', help='')
-flags.DEFINE_integer('env_grid_h', 10, lower_bound=1, help='')
-flags.DEFINE_integer('env_grid_w', 10, lower_bound=1, help='')
+flags.DEFINE_integer('env_grid_h', 3, lower_bound=1, help='')
+flags.DEFINE_integer('env_grid_w', 3, lower_bound=1, help='')
 
 class Environment:
 	def __init__(self, agent_ids, agent_pos, seed=None, mode="grid", grid_h=10, grid_w=10):
@@ -51,8 +51,7 @@ class Environment:
 		pos_agent_list = defaultdict(lambda: [])
 		for agent_id in self.agent_ids:
 			cur_node = self.agent_pos[agent_id]
-			# next_node = self.rng.choice(self.G[cur_node])
-			next_node = cur_node
+			next_node = self.rng.choice(self.G[cur_node])
 
 			self.agent_pos[agent_id] = next_node
 			pos_agent_list[next_node].append(agent_id)
