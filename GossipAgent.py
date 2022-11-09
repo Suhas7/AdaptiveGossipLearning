@@ -149,13 +149,14 @@ class GossipAgent:
 
         # Calculate beta value
         policy = self.beta_policy(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer)
-        beta = np.random.choice(self.beta_action, p=policy.detach().cpu().numpy())
-        # beta = 0.5
+        #beta = np.random.choice(self.beta_action, p=policy.detach().cpu().numpy())
+        beta = 0.1
 
         # Calculate gradient of peer model on local data (already done in stage 2)
 
         # Combine models
         # Approach 1: combine gradients with beta-weight
+        assert not self.combine_grad
         if self.combine_grad:
             self.optimizer.zero_grad()
             self.loss.backward()
@@ -167,6 +168,7 @@ class GossipAgent:
 
         # Approach 2: combine model parameters with beta-weight
         else:
+            pass
             state = self.model.state_dict()
             peer_state = self.peer_model.state_dict()
             for layer in state:

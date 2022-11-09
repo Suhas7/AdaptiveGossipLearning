@@ -56,7 +56,7 @@ def main(argv):
         # Test each agent model against test dataset
         for id, agent in driver.agents.items():
             aucs[id].append(agent.evaluate(agent.model, test_dataloader)[0])
-            local_aucs[id].append(agent.evaluate(agent.model, agent.dataloader)[0])
+            #local_aucs[id].append(agent.evaluate(agent.model, agent.dataloader)[0])
     
     print(aucs)
     x = np.arange(FLAGS.num_env_steps)
@@ -66,7 +66,7 @@ def main(argv):
     plt.savefig("Agents Curve", bbox_inches='tight')
     plt.clf()
     #plt.show()
-
+    '''
     print(local_aucs)
     x = np.arange(FLAGS.num_env_steps)
     for id in driver.agents.keys():
@@ -75,6 +75,7 @@ def main(argv):
     plt.savefig("Agents local test Curve", bbox_inches='tight')
     plt.clf()
     #plt.show()
+    '''
 
 if __name__ == '__main__':
     app.run(main)

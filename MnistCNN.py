@@ -6,8 +6,22 @@ import torch.nn.functional as F
 https://www.kaggle.com/cdeotte/25-million-images-0-99757-mnist
 Achieves 95% accuracy on this system.'''
 
-
 class MnistCnn(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc = nn.Sequential(
+                nn.Linear(784, 120),
+                nn.ReLU(),
+                nn.Linear(120, 84),
+                nn.ReLU(),
+                nn.Linear(84, 10)
+            )
+
+    def forward(self, x):
+        x = torch.flatten(x, start_dim=1)
+        return self.fc(x)
+
+class _MnistCnn(nn.Module):
     def __init__(self):
         super(MnistCnn, self).__init__()
         self.dropout_layer = nn.Dropout2d(0.4)
