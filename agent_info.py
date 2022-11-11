@@ -24,6 +24,24 @@ def getAgentConfig(mode):
             sigmas=0.5*np.ones(FLAGS.num_agents),
             dists=[np.ones(FLAGS.num_class)/FLAGS.num_class for _ in range(FLAGS.num_agents)],
             start_coords=[(0, 0) for _ in range(FLAGS.num_agents)])
+    elif mode == 'nclass':
+        N = 5
+        baseweight = 1
+        topweight = 4
+        norm = N*topweight + (FLAGS.num_class-N)*baseweight
+        dists = list()
+        for _ in range(FLAGS.num_agents):
+            curr = np.ones(FLAGS.num_class)
+            tops = np.random.sample(np.choice(FLAGS.num_class), N, False)
+            for idx in tops:
+                curr[idx] = topweight
+            curr /= norm
+            dists.append(curr)
+        return AgentConfig(
+            alphas=0.5 * np.ones(FLAGS.num_agents),
+            sigmas=0.5 * np.ones(FLAGS.num_agents),
+            dists=dists,
+            start_coords=[(0, 0) for _ in range(FLAGS.num_agents)])
     elif mode == 'extreme':
         dists = [np.zeros(FLAGS.num_class) for _ in range(FLAGS.num_agents)]
         tot = FLAGS.num_class
