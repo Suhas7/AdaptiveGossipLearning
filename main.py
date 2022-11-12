@@ -58,7 +58,10 @@ def main(argv):
             aucs[id].append(agent.evaluate(agent.model, test_dataloader)[0])
             local_aucs[id].append(agent.evaluate(agent.model, agent.dataloader)[0])
     
-    print(aucs)
+    with open('Agent_auc.txt', 'a') as f:
+        for id in aucs:
+            print(id, file=f)
+            print(aucs[id], file=f)
     x = np.arange(FLAGS.num_env_steps)
     for id in driver.agents.keys():
         plt.plot(x, aucs[id], label=f'{id}')
@@ -67,7 +70,10 @@ def main(argv):
     plt.clf()
     #plt.show()
 
-    print(local_aucs)
+    with open('Agent_local_auc.txt', 'a') as f:
+        for id in local_aucs:
+            print(id, file=f)
+            print(local_aucs[id], file=f)
     x = np.arange(FLAGS.num_env_steps)
     for id in driver.agents.keys():
         plt.plot(x, local_aucs[id], label=f'{id}')

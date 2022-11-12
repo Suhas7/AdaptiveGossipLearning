@@ -149,8 +149,8 @@ class GossipAgent:
 
         # Calculate beta value
         policy = self.beta_policy(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer)
-        #beta = np.random.choice(self.beta_action, p=policy.detach().cpu().numpy())
-        beta = 0.1
+        beta = np.random.choice(self.beta_action, p=policy.detach().cpu().numpy())
+        #beta = 0.1
 
         # Calculate gradient of peer model on local data (already done in stage 2)
 

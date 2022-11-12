@@ -32,7 +32,7 @@ def getAgentConfig(mode):
         dists = list()
         for _ in range(FLAGS.num_agents):
             curr = np.ones(FLAGS.num_class)
-            tops = np.random.sample(np.choice(FLAGS.num_class), N, False)
+            tops = np.random.choice(FLAGS.num_class, size=N, replace=False)
             for idx in tops:
                 curr[idx] = topweight
             curr /= norm
