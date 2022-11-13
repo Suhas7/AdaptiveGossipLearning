@@ -177,8 +177,7 @@ class GossipAgent:
 
         # train beta using self.calculate_total_reward()
         reward = self.alpha * self.local_auc + (1 - self.alpha) * self.calculate_rpeer()
-        # TODO: fix this later
-        beta_id = int(beta * (self.beta_num - 1))
+        beta_id = np.where(self.beta_action == beta)
         logging.debug('beta id {} beta {}'.format(beta_id, beta))
         action_onehot = F.one_hot(torch.tensor(beta_id), self.beta_num)
         beta_loss = torch.sum(torch.log(torch.clip(action_onehot * policy, 1e-10, 1.0)) * reward)
