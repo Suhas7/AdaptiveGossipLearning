@@ -68,6 +68,8 @@ def main(argv):
     for id in driver.agents.keys():
         print(id, aucs[id][-k:])
         plt.plot(x, aucs[id], label=f'{id}')
+    output = sum(np.asarray(driver.agents.values()))/len(driver.agents.keys())
+    print(output)
     plt.legend()
     plt.savefig("Agents Curve", bbox_inches='tight')
     plt.clf()
