@@ -17,6 +17,23 @@ class AgentConfig:
     dists: list[npt.NDArray[np.float_]]
     start_coords: list[tuple]
 
+def _gen_nclass(N, baseweight, topweight):
+    norm = N*topweight + (FLAGS.num_class-N)*baseweight
+    dists = list()
+    for _ in range(FLAGS.num_agents):
+        curr = np.ones(FLAGS.num_class)
+        tops = np.random.choice(FLAGS.num_class, size=N, replace=False)
+        for idx in tops:
+            curr[idx] = topweight
+        curr /= norm
+        dists.append(curr)
+    return AgentConfig(
+        alphas=0.5 * np.ones(FLAGS.num_agents),
+        sigmas=0.5 * np.ones(FLAGS.num_agents),
+        dists=dists,
+        start_coords=[(0, 0) for _ in range(FLAGS.num_agents)])
+
+
 def getAgentConfig(mode):
     if mode == 'default':
         return AgentConfig(
@@ -25,23 +42,9 @@ def getAgentConfig(mode):
             dists=[np.ones(FLAGS.num_class)/FLAGS.num_class for _ in range(FLAGS.num_agents)],
             start_coords=[(0, 0) for _ in range(FLAGS.num_agents)])
     elif mode == 'nclass':
-        N = 5
-        baseweight = 1
-        topweight = 4
-        norm = N*topweight + (FLAGS.num_class-N)*baseweight
-        dists = list()
-        for _ in range(FLAGS.num_agents):
-            curr = np.ones(FLAGS.num_class)
-            tops = np.random.choice(FLAGS.num_class, size=N, replace=False)
-            for idx in tops:
-                curr[idx] = topweight
-            curr /= norm
-            dists.append(curr)
-        return AgentConfig(
-            alphas=0.5 * np.ones(FLAGS.num_agents),
-            sigmas=0.5 * np.ones(FLAGS.num_agents),
-            dists=dists,
-            start_coords=[(0, 0) for _ in range(FLAGS.num_agents)])
+        return _gen_nclass(N=5, baseweight=1, topweight=4)
+    elif mode == 'nclass-2':
+        return _gen_nclass(N=3, baseweight=1, topweight=5)
     elif mode == 'extreme':
         dists = [np.zeros(FLAGS.num_class) for _ in range(FLAGS.num_agents)]
         tot = FLAGS.num_class
