@@ -47,6 +47,8 @@ def getAgentConfig(mode):
         return _gen_nclass(N=3, baseweight=1, topweight=5)
     elif mode == 'nclass-3':
         return _gen_nclass(N=3, baseweight=1, topweight=10)
+    elif mode == 'nclass-4':
+        return _gen_nclass(N=3, baseweight=1, topweight=15)
     elif mode == 'extreme':
         dists = [np.zeros(FLAGS.num_class) for _ in range(FLAGS.num_agents)]
         tot = FLAGS.num_class
