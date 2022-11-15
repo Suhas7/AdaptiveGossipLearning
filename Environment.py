@@ -61,7 +61,9 @@ class Environment:
         for node, agent_list in pos_agent_list.items():
             permu = self.rng.permutation(agent_list)
             for i in range(0, len(permu)-1, 2):
-                agent_pairs.append((permu[i], permu[i + 1]))
+                mn = min(permu[i], permu[i + 1])
+                mx = max(permu[i], permu[i + 1])
+                agent_pairs.append((mn, mx))
 
         logging.debug('env step done with paired agent {}'.format(agent_pairs))
 
