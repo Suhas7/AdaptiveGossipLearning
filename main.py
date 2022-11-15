@@ -1,3 +1,4 @@
+import os.path
 import random
 
 import torch.random
@@ -19,6 +20,8 @@ flags.DEFINE_string('logdir', None, help='')
 flags.mark_flag_as_required('logdir')
 
 def main(argv):
+    if not os.path.exists(FLAGS.logdir):
+        os.makedirs(FLAGS.logdir)
     with open(f'{FLAGS.logdir}/config.txt', 'w') as f:
         print(FLAGS.__flags, file=f)
     random.seed(0)
