@@ -12,11 +12,13 @@ from sklearn import metrics
 ''''''
 class GossipAgent:
     def __init__(self, aid, data, alpha=.5, sigma=.8, beta_num=11,
-                 coord=[0,0], lr=1e-4, combine_grad=False, device='cpu'):
+                 coord=[0,0], lr=1e-4, combine_grad=False, device='cpu', dummy=False):
         # Agent metadata and hyper-parameters
         self.id = aid
         self.alpha = alpha
         self.sigma = sigma
+
+        self.dumb = dummy
 
         # TODO: Load test data as well
         # XXX: change this to correct training data
@@ -92,16 +94,17 @@ class GossipAgent:
 
     def local_step(self, steps=1):
         # Train `steps` local step on the model
-        self.model.train()
-        for i, (data, label) in tqdm(enumerate(self.dataloader), total=steps, desc=f"{self.id} Training", leave=False):
-            if i >= steps:
-                break
-            pred = self.model(data.to(self.device))
-            loss = torch.nn.functional.cross_entropy(pred, label.to(self.device))
+        if not self.dumb:
+            self.model.train()
+            for i, (data, label) in tqdm(enumerate(self.dataloader), total=steps, desc=f"{self.id} Training", leave=False):
+                if i >= steps:
+                    break
+                pred = self.model(data.to(self.device))
+                loss = torch.nn.functional.cross_entropy(pred, label.to(self.device))
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
 
     def update_peer_accs(self, oid, pacc):
         # Update peer_accs
@@ -139,8 +142,10 @@ class GossipAgent:
 
     def stage5_local_updates(self, other):
         logging.debug('stage 5')
-        self.stage5_helper()
-        other.stage5_helper()
+        if not self.dumb:
+            self.stage5_helper()
+        if not other.dumb:
+            other.stage5_helper()
 
     def stage5_helper(self):
         # Given results of first 4 stages, update your local model

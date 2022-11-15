@@ -46,7 +46,8 @@ class Driver:
 				sigma=agentConfig.sigmas[i],
 				coord=agentConfig.start_coords[i],
 				combine_grad=FLAGS.combine_grad,
-				device=device
+				device=device,
+				dummy=agentConfig.dummy[i]
 			)
 			logging.debug('Driver: agents {} created'.format(i))
 

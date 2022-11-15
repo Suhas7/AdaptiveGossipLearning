@@ -16,10 +16,13 @@ class AgentConfig:
     sigmas: npt.NDArray[np.float_]
     dists: list[npt.NDArray[np.float_]]
     start_coords: list[tuple]
+    dummy: list[bool]
 
 
 '''Create a distribution where N classes have topweight, the rest have baseweight'''
 def _gen_nclass(N, baseweight, topweight):
+    if N == 0:
+        return np.ones(FLAGS.num_class)
     assert topweight >= baseweight
     norm = N*topweight + (FLAGS.num_class-N)*baseweight
     w = np.ones(FLAGS.num_class)
@@ -29,20 +32,26 @@ def _gen_nclass(N, baseweight, topweight):
     return w
 
 
+'''
+distributions: 2-d numpy arrays
+entry: [no. agent, N, baseweight, topweight]
+if N = 0: create dummy agent that doesn't learn
+'''
 def gen_distribution(distributions=None):
     assert distributions is None or np.sum(distributions[:, 0]) == FLAGS.num_agents
     if distributions is None:
         distributions = np.array([[FLAGS.num_agents, 3, 1, 5]])
-    weights = []
+    weights, dummy = [], []
     for d in distributions:
         for i in range(d[0]):
             weights.append(_gen_nclass(d[1], d[2], d[3]))
-
+            dummy.append(d[1] == 0)
     return AgentConfig(
         alphas=0.5 * np.ones(FLAGS.num_agents),
         sigmas=0.5 * np.ones(FLAGS.num_agents),
         dists=weights,
-        start_coords=[(0, 0) for _ in range(FLAGS.num_agents)]
+        start_coords=[(0, 0) for _ in range(FLAGS.num_agents)],
+        dummy=dummy
     )
 
 def getAgentConfig(mode):
@@ -51,7 +60,9 @@ def getAgentConfig(mode):
             alphas=0.5*np.ones(FLAGS.num_agents),
             sigmas=0.5*np.ones(FLAGS.num_agents),
             dists=[np.ones(FLAGS.num_class)/FLAGS.num_class for _ in range(FLAGS.num_agents)],
-            start_coords=[(0, 0) for _ in range(FLAGS.num_agents)])
+            start_coords=[(0, 0) for _ in range(FLAGS.num_agents)],
+            dummy=[False for _ in range(FLAGS.num_agents)]
+        )
     elif mode == 'nclass':
         distr = np.array([[FLAGS.num_agents, 5, 1, 4]])
         return gen_distribution(distr)
@@ -65,9 +76,14 @@ def getAgentConfig(mode):
         distr = np.array([[FLAGS.num_agents, 3, 1, 15]])
         return gen_distribution(distr)
     elif mode == 'nclass-5':
-        a = min(0, 2, FLAGS.num_agents - 2)
+        a = max(min(2, FLAGS.num_agents - 2), 0)
         b = FLAGS.num_agents - a
         distr = np.array([[a, 1, 1, 5], [b, 3, 1, 5]])
+        return gen_distribution(distr)
+    elif mode == 'dumb-1':
+        a = max(min(2, FLAGS.num_agents - 2), 0)
+        b = FLAGS.num_agents - a
+        distr = np.array([[a, 0, 1, 5], [b, 3, 1, 5]])
         return gen_distribution(distr)
     elif mode == 'extreme':
         dists = [np.zeros(FLAGS.num_class) for _ in range(FLAGS.num_agents)]
@@ -87,6 +103,8 @@ def getAgentConfig(mode):
             alphas=0.5 * np.ones(FLAGS.num_agents),
             sigmas=0.5 * np.ones(FLAGS.num_agents),
             dists=dists,
-            start_coords=[(0, 0) for _ in range(FLAGS.num_agents)])
+            start_coords=[(0, 0) for _ in range(FLAGS.num_agents)],
+            dummy=[False for _ in range(FLAGS.num_agents)]
+        )
     else:
         raise NotImplementedError(f"agent_info mode not implemented {mode}")
