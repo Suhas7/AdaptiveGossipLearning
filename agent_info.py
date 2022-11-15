@@ -59,6 +59,9 @@ def getAgentConfig(mode):
         distr = np.array([[FLAGS.num_agents, 3, 1, 5]])
         return gen_distribution(distr)
     elif mode == 'nclass-3':
+        distr = np.array([[FLAGS.num_agents, 3, 1, 10]])
+        return gen_distribution(distr)
+    elif mode == 'nclass-4':
         a = min(FLAGS.num_agents - 2, 2)
         b = FLAGS.num_agents - a
         distr = np.array([[a, 1, 1, 5], [b, 3, 1, 5]])
