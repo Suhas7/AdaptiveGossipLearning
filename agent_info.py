@@ -46,6 +46,11 @@ def gen_distribution(distributions=None):
         for i in range(d[0]):
             weights.append(_gen_nclass(d[1], d[2], d[3]))
             dummy.append(d[1] == 0)
+    with open(f'{FLAGS.logdir}/class_distribution.txt', 'w') as f:
+        for i, w in enumerate(weights):
+            print(f'Agent {i}, dumb {dummy[i]}', end=' ', file=f)
+            print([f'{i:.3f}' for i in w.tolist()], file=f)
+
     return AgentConfig(
         alphas=0.5 * np.ones(FLAGS.num_agents),
         sigmas=0.5 * np.ones(FLAGS.num_agents),
@@ -83,7 +88,7 @@ def getAgentConfig(mode):
     elif mode == 'dumb-1':
         a = max(min(2, FLAGS.num_agents - 2), 0)
         b = FLAGS.num_agents - a
-        distr = np.array([[a, 0, 1, 5], [b, 3, 1, 5]])
+        distr = np.array([[a, 0, 1, 5], [b, 10, 1, 5]])
         return gen_distribution(distr)
     elif mode == 'extreme':
         dists = [np.zeros(FLAGS.num_class) for _ in range(FLAGS.num_agents)]

@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 from torch.utils.data import DataLoader
 from absl import logging
 from tqdm import tqdm
@@ -51,6 +52,7 @@ class GossipAgent:
         self.peer_idmap = dict()
         self.combine_grad = combine_grad
         self.local_auc_history = []
+        self.peer_id = None
 
     def save_models(self, eps):
         torch.save(self.beta_policy.state_dict(), self.beta_fp + "episode_{}.pt".format(eps))
@@ -94,6 +96,7 @@ class GossipAgent:
 
     def local_step(self, steps=1):
         # Train `steps` local step on the model
+        total_loss = 0
         if not self.dumb:
             self.model.train()
             for i, (data, label) in tqdm(enumerate(self.dataloader), total=steps, desc=f"{self.id} Training", leave=False):
@@ -101,10 +104,12 @@ class GossipAgent:
                     break
                 pred = self.model(data.to(self.device))
                 loss = torch.nn.functional.cross_entropy(pred, label.to(self.device))
+                total_loss += loss.item()
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
+        return total_loss / steps
 
     def update_peer_accs(self, oid, pacc):
         # Update peer_accs
@@ -119,6 +124,8 @@ class GossipAgent:
         # Make a copy of the other's model
         self.peer_model.load_state_dict(other.model.state_dict())
         other.peer_model.load_state_dict(self.model.state_dict())
+        self.peer_id = other.id
+        other.peer_id = self.id
 
     def stage2_eval_peer(self, other):
         # logging.debug('stage 2')
@@ -140,14 +147,14 @@ class GossipAgent:
         self.other_rpeer = other.calculate_rpeer()
         other.other_rpeer = self.calculate_rpeer()
 
-    def stage5_local_updates(self, other):
+    def stage5_local_updates(self, other, round):
         logging.debug('stage 5')
         if not self.dumb:
-            self.stage5_helper()
+            self.stage5_helper(round)
         if not other.dumb:
-            other.stage5_helper()
+            other.stage5_helper(round)
 
-    def stage5_helper(self):
+    def stage5_helper(self, round):
         # Given results of first 4 stages, update your local model
         # Calculate local gradient
         self.local_auc, self.loss = self.evaluate(self.model, self.dataloader)
@@ -189,3 +196,8 @@ class GossipAgent:
         self.beta_optimizer.zero_grad()
         beta_loss.backward()
         self.beta_optimizer.step()
+
+        # log data
+        wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
+                   f'comm/beta_loss-{self.id}-{self.peer_id}': beta_loss,
+                   f'comm/reward_{self.id}': reward}, commit=False)
