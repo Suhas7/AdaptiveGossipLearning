@@ -15,10 +15,12 @@ FLAGS = flags.FLAGS
 flags.DEFINE_integer('num_env_steps', None, lower_bound=2, help='')
 flags.mark_flag_as_required('num_env_steps')
 flags.DEFINE_integer('n_train_img', 1000, lower_bound=2, help='')
+flags.DEFINE_string('logdir', None, help='')
+flags.mark_flag_as_required('logdir')
 
 def main(argv):
-    with open(f'{FLAGS.log_dir}/config.txt', 'w') as f:
-        print(FLAGS, file=f)
+    with open(f'{FLAGS.logdir}/config.txt', 'w') as f:
+        print(FLAGS.__flags, file=f)
     random.seed(0)
     np.random.seed(0)
     torch.manual_seed(0)
@@ -60,7 +62,7 @@ def main(argv):
             aucs[id].append(agent.evaluate(agent.model, test_dataloader)[0])
             local_aucs[id].append(agent.evaluate(agent.model, agent.dataloader)[0])
     
-    with open(f'{FLAGS.log_dir}/Agent_auc.txt', 'a') as f:
+    with open(f'{FLAGS.logdir}/Agent_auc.txt', 'a') as f:
         for id in aucs:
             print(id, file=f)
             print(aucs[id], file=f)
@@ -73,11 +75,11 @@ def main(argv):
     #output = sum(np.asarray(list(driver.agents.values()))/len(driver.agents.keys())
     #print(output)
     plt.legend()
-    plt.savefig(f"{FLAGS.log_dir}/Agents Curve", bbox_inches='tight')
+    plt.savefig(f"{FLAGS.logdir}/Agents Curve", bbox_inches='tight')
     plt.clf()
     #plt.show()
 
-    with open(f'{FLAGS.log_dir}/Agent_local_auc.txt', 'a') as f:
+    with open(f'{FLAGS.logdir}/Agent_local_auc.txt', 'a') as f:
         for id in local_aucs:
             print(id, file=f)
             print(local_aucs[id], file=f)
@@ -88,7 +90,7 @@ def main(argv):
         print(id, local_aucs[id][-k:])
         plt.plot(x, local_aucs[id], label=f'{id}')
     plt.legend()
-    plt.savefig(f"{FLAGS.log_dir}/Agents local test Curve", bbox_inches='tight')
+    plt.savefig(f"{FLAGS.logdir}/Agents local test Curve", bbox_inches='tight')
     plt.clf()
     #plt.show()
 
