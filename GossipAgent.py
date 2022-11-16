@@ -218,7 +218,7 @@ class GossipAgent:
         if FLAGS.beta_net == 'classify':
             beta_id = np.where(self.beta_action == beta)[0]
             logging.debug('beta id {} beta {}'.format(beta_id, beta))
-            action_onehot = F.one_hot(torch.tensor(beta_id), self.beta_num)
+            action_onehot = F.one_hot(torch.tensor(beta_id), self.beta_num).to(self.device)
             beta_loss = -torch.sum(torch.log(torch.clip(action_onehot * policy, 1e-10, 1.0)) * reward)
             self.beta_optimizer.zero_grad()
             beta_loss.backward()
