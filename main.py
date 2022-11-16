@@ -33,7 +33,7 @@ def setup():
         grid_h=FLAGS.env_grid_h,
         grid_w=FLAGS.env_grid_w
     )
-    name = str(FLAGS.num_agent) + '_' + FLAGS.agent_info_mode
+    name = str(FLAGS.num_agents) + '_' + FLAGS.agent_info_mode + '_' + FLAGS.beta_net
     wandb.init(project='Gossip Learning', entity='gossips', group='grid_not_move', job_type='test', name=name,
                config=config)
     wandb.define_metric('round')

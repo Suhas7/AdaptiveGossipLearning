@@ -240,6 +240,7 @@ class GossipAgent:
             self.beta_policy_optimizer.step()
 
             # log data
-            wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
-                       f'comm/beta_loss-{self.id}-{self.peer_id}': beta_loss,
-                       f'comm/beta_critic_loss-{self.id}-{self.peer_id}': beta_loss,
+            wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta.item(),
+                       f'comm/beta_loss-{self.id}-{self.peer_id}': beta_loss.item(),
+                       f'comm/beta_critic_loss-{self.id}-{self.peer_id}': beta_critic_loss.item(),
+                       f'comm/reward_{self.id}': reward}, commit=False)
