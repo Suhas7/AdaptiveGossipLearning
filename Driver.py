@@ -66,12 +66,14 @@ class Driver:
 
     def env_step(self):
         # Execute all local steps
-        wandb.log({'round': self.episode_count + 1}, commit=False)
+        if FLAGS.wandb:
+            wandb.log({'round': self.episode_count + 1}, commit=False)
         count = 0
         for key, agent in self.agents.items():
             logging.debug('Agent %d local step' % key)
             avg_loss = agent.local_step(self.local_step_freq)
-            wandb.log({f'train/loss_{agent.id}': avg_loss}, commit=count == FLAGS.num_agents - 1)
+            if FLAGS.wandb:
+                wandb.log({f'train/loss_{agent.id}': avg_loss}, commit=count == FLAGS.num_agents - 1)
             count += 1
 
         logging.debug('Complete local step')

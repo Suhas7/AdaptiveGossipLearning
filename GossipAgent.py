@@ -16,7 +16,7 @@ flags.DEFINE_string('beta_net', 'classify', help='')
 
 class GossipAgent:
     def __init__(self, aid, data, alpha=.5, sigma=.8, beta_num=11,
-                 coord=[0,0], lr=1e-4, combine_grad=False, device='cpu', dummy=False):
+                 coord=[0,0], lr=1e-2, combine_grad=False, device='cpu', dummy=False):
         # Agent metadata and hyper-parameters
         self.id = aid
         self.alpha = alpha
@@ -217,11 +217,13 @@ class GossipAgent:
             self.beta_optimizer.step()
 
             # log data
-            wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
-                       f'comm/beta_loss-{self.id}-{self.peer_id}': beta_loss,
-                       f'comm/reward_{self.id}': reward}, commit=False)
+            if FLAGS.wandb:
+                wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
+                           f'comm/beta_loss-{self.id}-{self.peer_id}': beta_loss,
+                           f'comm/reward_{self.id}': reward}, commit=False)
         elif FLAGS.beta_net == 'ddpg':
             logging.debug('agent {} peer beta {}'.format(self.id, beta))
+            logging.debug('{} {} {} {}'.format(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))
             beta = self.beta_policy(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer, device=self.device)
             reward_predict = self.beta_critic(
                     self.local_auc, self.peer_acc, self.calculate_rpeer(),
@@ -240,7 +242,8 @@ class GossipAgent:
             self.beta_policy_optimizer.step()
 
             # log data
-            wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta.item(),
-                       f'comm/beta_loss-{self.id}-{self.peer_id}': beta_loss.item(),
-                       f'comm/beta_critic_loss-{self.id}-{self.peer_id}': beta_critic_loss.item(),
-                       f'comm/reward_{self.id}': reward}, commit=False)
+            if FLAGS.wandb:
+                wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta.item(),
+                           f'comm/beta_loss-{self.id}-{self.peer_id}': beta_loss.item(),
+                           f'comm/beta_critic_loss-{self.id}-{self.peer_id}': beta_critic_loss.item(),
+                           f'comm/reward_{self.id}': reward}, commit=False)

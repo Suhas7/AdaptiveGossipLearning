@@ -22,24 +22,25 @@ flags.mark_flag_as_required('logdir')
 flags.DEFINE_bool('wandb', True, help='')
 
 def setup():
-    config = dict(
-        num_agent=FLAGS.num_agents,
-        num_image=FLAGS.n_train_img,
-        num_class=FLAGS.num_class,
-        mode=FLAGS.agent_info_mode,
-        local_freq=FLAGS.local_step_freq,
-        combine_grad=FLAGS.combine_grad,
-        env_mode=FLAGS.env_mode,
-        grid_h=FLAGS.env_grid_h,
-        grid_w=FLAGS.env_grid_w
-    )
-    name = str(FLAGS.num_agents) + '_' + FLAGS.agent_info_mode + '_' + FLAGS.beta_net
-    wandb.init(project='Gossip Learning', entity='gossips', group='grid_not_move', job_type='test', name=name,
-               config=config)
-    wandb.define_metric('round')
-    wandb.define_metric('comm/*', step_metric='round')
-    wandb.define_metric('auc/*', step_metric='round')
-    wandb.define_metric('local_auc/*', step_metric='round')
+    if FLAGS.wandb:
+        config = dict(
+            num_agent=FLAGS.num_agents,
+            num_image=FLAGS.n_train_img,
+            num_class=FLAGS.num_class,
+            mode=FLAGS.agent_info_mode,
+            local_freq=FLAGS.local_step_freq,
+            combine_grad=FLAGS.combine_grad,
+            env_mode=FLAGS.env_mode,
+            grid_h=FLAGS.env_grid_h,
+            grid_w=FLAGS.env_grid_w
+        )
+        name = str(FLAGS.num_agents) + '_' + FLAGS.agent_info_mode + '_' + FLAGS.beta_net
+        wandb.init(project='Gossip Learning', entity='gossips', group='grid_not_move', job_type='test', name=name,
+                   config=config)
+        wandb.define_metric('round')
+        wandb.define_metric('comm/*', step_metric='round')
+        wandb.define_metric('auc/*', step_metric='round')
+        wandb.define_metric('local_auc/*', step_metric='round')
 
 def main(argv):
     setup()
