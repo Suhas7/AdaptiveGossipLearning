@@ -1,4 +1,5 @@
 from absl import flags
+from typing import List
 
 from dataclasses import dataclass
 import numpy as np
@@ -14,9 +15,9 @@ flags.mark_flag_as_required('num_class')
 class AgentConfig:
     alphas: npt.NDArray[np.float_]
     sigmas: npt.NDArray[np.float_]
-    dists: list[npt.NDArray[np.float_]]
-    start_coords: list[tuple]
-    dummy: list[bool]
+    dists: List[npt.NDArray[np.float_]]
+    start_coords: List[tuple]
+    dummy: List[bool]
 
 
 '''Create a distribution where N classes have topweight, the rest have baseweight'''
@@ -87,6 +88,11 @@ def getAgentConfig(mode):
         return gen_distribution(distr)
     elif mode == 'dumb-1':
         a = max(min(2, FLAGS.num_agents - 2), 0)
+        b = FLAGS.num_agents - a
+        distr = np.array([[a, 0, 1, 5], [b, 10, 1, 5]])
+        return gen_distribution(distr)
+    elif mode == 'dumb-2':
+        a = max(min(1, FLAGS.num_agents - 1), 0)
         b = FLAGS.num_agents - a
         distr = np.array([[a, 0, 1, 5], [b, 10, 1, 5]])
         return gen_distribution(distr)
