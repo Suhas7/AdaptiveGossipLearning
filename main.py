@@ -2,6 +2,7 @@ import os.path
 import random
 
 import torch.random
+import wandb
 from absl import app, flags, logging
 from Driver import Driver
 from data_distribution import fetch_mnist_data
@@ -18,8 +19,31 @@ flags.mark_flag_as_required('num_env_steps')
 flags.DEFINE_integer('n_train_img', 1000, lower_bound=2, help='')
 flags.DEFINE_string('logdir', None, help='')
 flags.mark_flag_as_required('logdir')
+flags.DEFINE_bool('wandb', True, help='')
+
+def setup():
+    config = dict(
+        num_agent=FLAGS.num_agents,
+        num_image=FLAGS.n_train_img,
+        num_class=FLAGS.num_class,
+        mode=FLAGS.agent_info_mode,
+        local_freq=FLAGS.local_step_freq,
+        combine_grad=FLAGS.combine_grad,
+        env_mode=FLAGS.env_mode,
+        grid_h=FLAGS.env_grid_h,
+        grid_w=FLAGS.env_grid_w
+    )
+    name = str(FLAGS.num_agent) + '_' + FLAGS.agent_info_mode
+    wandb.init(project='Gossip Learning', entity='gossips', group='grid_not_move', job_type='test', name=name,
+               config=config)
+    wandb.define_metric('round')
+    wandb.define_metric('comm/*', step_metric='round')
+    wandb.define_metric('auc/*', step_metric='round')
+    wandb.define_metric('local_auc/*', step_metric='round')
 
 def main(argv):
+    setup()
+
     if not os.path.exists(FLAGS.logdir):
         os.makedirs(FLAGS.logdir)
     with open(f'{FLAGS.logdir}/config.txt', 'w') as f:
@@ -60,20 +84,28 @@ def main(argv):
         logging.debug("Beginning env_step {}".format(i))
         driver.env_step()
         logging.debug("Env step #%d", i)
+
         # Test each agent model against test dataset
         for id, agent in driver.agents.items():
-            aucs[id].append(agent.evaluate(agent.model, test_dataloader)[0])
-            local_aucs[id].append(agent.evaluate(agent.model, agent.dataloader)[0])
-    
+            auc = agent.evaluate(agent.model, test_dataloader)[0]
+            local_auc = agent.evaluate(agent.model, agent.dataloader)[0]
+            aucs[id].append(auc)
+            local_aucs[id].append(local_auc)
+
+            # Log to wandb
+            count = 0
+            if count < FLAGS.num_agents - 1:
+                wandb.log({'auc/'+str(id): auc, 'local_auc/'+str(id): local_auc}, commit=False)
+                count += 1
+            else:
+                wandb.log({'auc/' + str(id): auc, 'local_auc/' + str(id): local_auc})
+
     with open(f'{FLAGS.logdir}/Agent_auc.txt', 'a') as f:
         for id in aucs:
             print(id, file=f)
             print(aucs[id], file=f)
     x = np.arange(FLAGS.num_env_steps)
-    k = 10
-    print(f'AUC (last {k})')
     for id in driver.agents.keys():
-        print(id, aucs[id][-k:])
         plt.plot(x, aucs[id], label=f'{id}')
     #output = sum(np.asarray(list(driver.agents.values()))/len(driver.agents.keys())
     #print(output)
@@ -99,3 +131,5 @@ def main(argv):
 
 if __name__ == '__main__':
     app.run(main)
+
+
