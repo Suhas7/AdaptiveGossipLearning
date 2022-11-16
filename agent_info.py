@@ -101,6 +101,11 @@ def getAgentConfig(mode):
         b = FLAGS.num_agents - a
         distr = np.array([[a, 0, 1, 5], [b, 10, 1, 5]])
         return gen_distribution(distr)
+    elif mode == 'dumb-3':
+        a = max(min(1, FLAGS.num_agents - 1), 0)
+        b = FLAGS.num_agents - a
+        distr = np.array([[a, 0, 1, 5], [b, int(10 / FLAGS.num_agents) + 1, 1, 15]])
+        return gen_distribution(distr)
     elif mode == 'extreme':
         dists = [np.zeros(FLAGS.num_class) for _ in range(FLAGS.num_agents)]
         tot = FLAGS.num_class
