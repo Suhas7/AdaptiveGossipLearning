@@ -94,12 +94,13 @@ def main(argv):
             local_aucs[id].append(local_auc)
 
             # Log to wandb
-            count = 0
-            if count < FLAGS.num_agents - 1:
-                wandb.log({'auc/'+str(id): auc, 'local_auc/'+str(id): local_auc}, commit=False)
-                count += 1
-            else:
-                wandb.log({'auc/' + str(id): auc, 'local_auc/' + str(id): local_auc})
+            if FLAGS.wandb:
+                count = 0
+                if count < FLAGS.num_agents - 1:
+                    wandb.log({'auc/'+str(id): auc, 'local_auc/'+str(id): local_auc}, commit=False)
+                    count += 1
+                else:
+                    wandb.log({'auc/' + str(id): auc, 'local_auc/' + str(id): local_auc})
 
     with open(f'{FLAGS.logdir}/Agent_auc.txt', 'a') as f:
         for id in aucs:
