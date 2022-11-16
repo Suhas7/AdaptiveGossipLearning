@@ -2,14 +2,17 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from absl import logging
+from absl import logging, flags
 from tqdm import tqdm
 
-from BetaPolicy import BetaPolicy
+from BetaPolicy import BetaPolicy, BetaAgent, BetaCritic
 from MnistCNN import MnistCnn
 from sklearn import metrics
 
-''''''
+FLAGS = flags.FLAGS
+
+flags.DEFINE_string('beta_net', 'classify', help='')
+
 class GossipAgent:
     def __init__(self, aid, data, alpha=.5, sigma=.8, beta_num=11,
                  coord=[0,0], lr=1e-4, combine_grad=False, device='cpu'):
@@ -19,7 +22,6 @@ class GossipAgent:
         self.sigma = sigma
 
         # TODO: Load test data as well
-        # XXX: change this to correct training data
         self.data = data
         logging.info(f'agent {self.id} data size {len(data)}')
         self.dataloader = DataLoader(self.data, batch_size=64, shuffle=True)
@@ -27,16 +29,27 @@ class GossipAgent:
         self.device = device
 
         # Import agent model, both for prediction and beta policy
-        self.beta_num = beta_num  # Number of discrete beta values to choose from
-        self.beta_policy = BetaPolicy(4, beta_num)
-        self.beta_action = np.linspace(0, 1, beta_num)
-        self.beta_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
+        if FLAGS.beta_net == 'classify':
+            self.beta_num = beta_num  # Number of discrete beta values to choose from
+            self.beta_policy = BetaPolicy(4, beta_num).to(device)
+            self.beta_action = np.linspace(0, 1, beta_num)
+            self.beta_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
+        elif FLAGS.beta_net == 'ddpg':
+            self.beta_policy = BetaAgent(4, 1).to(device)
+            self.beta_critic = BetaCritic(4, 1).to(device)
+            self.beta_policy_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
+            self.beta_critic_optimizer = torch.optim.Adam(self.beta_critic.parameters(), lr=lr)
+        else:
+            raise Exception(FLAGS.beta_net)
+
         self.model = MnistCnn().to(device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         self.peer_model = MnistCnn().to(device)
 
         # Model & Log Outputs
         self.beta_fp = "./betas/agent_{}/".format(aid)
+        if FLAGS.beta_net == 'ddpg':
+            self.beta_critic_fp = "./beta-critic/agent_{}/".format(aid)
         self.model_fp = "./models/agent_{}/".format(aid)
         self.log_fp = "./logs/agent_{}/".format(aid)
 
@@ -52,6 +65,8 @@ class GossipAgent:
 
     def save_models(self, eps):
         torch.save(self.beta_policy.state_dict(), self.beta_fp + "episode_{}.pt".format(eps))
+        if FLAGS.beta_net == 'ddpg':
+            torch.save(self.beta_critic.state_dict(), self.beta_critic_fp + "eposide_{}.pt".format(eps))
         torch.save(self.model.state_dict(), self.model_fp + "episode_{}.pt".format(eps))
 
     def calculate_total_reward(self):
@@ -85,7 +100,7 @@ class GossipAgent:
             preds = torch.argmax(torch.cat(preds), dim=1)
             auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(), average='macro')
 
-            if model == self.model:
+            if model is self.model:
                 self.local_auc_history.append(auc)
 
         return auc, loss
@@ -148,9 +163,11 @@ class GossipAgent:
         self.local_auc, self.loss = self.evaluate(self.model, self.dataloader)
 
         # Calculate beta value
-        policy = self.beta_policy(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer)
-        beta = np.random.choice(self.beta_action, p=policy.detach().cpu().numpy())
-        #beta = 0.1
+        policy = self.beta_policy(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer, device=self.device)
+        if FLAGS.beta_net == 'classify':
+            beta = np.random.choice(self.beta_action, p=policy.detach().cpu().numpy())
+        elif FLAGS.beta_net == 'ddpg':
+            beta = policy.detach().cpu().item()
 
         # Calculate gradient of peer model on local data (already done in stage 2)
 
@@ -177,10 +194,30 @@ class GossipAgent:
 
         # train beta using self.calculate_total_reward()
         reward = self.alpha * self.local_auc + (1 - self.alpha) * self.calculate_rpeer()
-        beta_id = np.where(self.beta_action == beta)[0]
-        logging.debug('beta id {} beta {}'.format(beta_id, beta))
-        action_onehot = F.one_hot(torch.tensor(beta_id), self.beta_num)
-        beta_loss = torch.sum(torch.log(torch.clip(action_onehot * policy, 1e-10, 1.0)) * reward)
-        self.beta_optimizer.zero_grad()
-        beta_loss.backward()
-        self.beta_optimizer.step()
+        assert 0 <= reward <= 1
+        if FLAGS.beta_net == 'classify':
+            beta_id = np.where(self.beta_action == beta)[0]
+            logging.debug('beta id {} beta {}'.format(beta_id, beta))
+            action_onehot = F.one_hot(torch.tensor(beta_id), self.beta_num)
+            beta_loss = -torch.sum(torch.log(torch.clip(action_onehot * policy, 1e-10, 1.0)) * reward)
+            self.beta_optimizer.zero_grad()
+            beta_loss.backward()
+            self.beta_optimizer.step()
+        elif FLAGS.beta_net == 'ddpg':
+            logging.debug('agent {} peer beta {}'.format(self.id, beta))
+            beta = self.beta_policy(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer, device=self.device)
+            reward_predict = self.beta_critic(
+                    self.local_auc, self.peer_acc, self.calculate_rpeer(),
+                    self.other_rpeer, beta.detach(), device=self.device)
+            beta_critic_loss = (reward_predict - reward)**2
+            logging.debug('agent {} critic loss {:.5f}'.format(self.id, beta_critic_loss.item()))
+            self.beta_critic_optimizer.zero_grad()
+            beta_critic_loss.backward()
+            self.beta_critic_optimizer.step()
+
+            beta_loss = -self.beta_critic(self.local_auc, self.peer_acc, 
+                    self.calculate_rpeer(), self.other_rpeer, beta, device=self.device)
+            logging.debug('agent {} beta loss {:.5f}'.format(self.id, beta_loss.item()))
+            self.beta_policy_optimizer.zero_grad()
+            beta_loss.backward()
+            self.beta_policy_optimizer.step()
