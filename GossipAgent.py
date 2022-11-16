@@ -243,5 +243,3 @@ class GossipAgent:
             wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
                        f'comm/beta_loss-{self.id}-{self.peer_id}': beta_loss,
                        f'comm/beta_critic_loss-{self.id}-{self.peer_id}': beta_loss,
-                       f'comm/reward_{self.id}': reward}, commit=False)
-
