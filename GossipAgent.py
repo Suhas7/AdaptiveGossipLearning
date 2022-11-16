@@ -42,6 +42,10 @@ class GossipAgent:
             self.beta_critic = BetaCritic(4, 1).to(device)
             self.beta_policy_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
             self.beta_critic_optimizer = torch.optim.Adam(self.beta_critic.parameters(), lr=lr)
+        elif FLAGS.beta_net.startswith('fix-'):
+            def _f(*args, **kwargs):
+                return float(FLAGS.beta_net.strip('fix-'))
+            self.beta_policy = _f
         else:
             raise Exception(FLAGS.beta_net)
 
@@ -68,8 +72,10 @@ class GossipAgent:
         self.peer_id = None
 
     def save_models(self, eps):
-        torch.save(self.beta_policy.state_dict(), self.beta_fp + "episode_{}.pt".format(eps))
-        if FLAGS.beta_net == 'ddpg':
+        if FLAGS.beta_net == 'classify':
+            torch.save(self.beta_policy.state_dict(), self.beta_fp + "episode_{}.pt".format(eps))
+        elif FLAGS.beta_net == 'ddpg':
+            torch.save(self.beta_policy.state_dict(), self.beta_fp + "episode_{}.pt".format(eps))
             torch.save(self.beta_critic.state_dict(), self.beta_critic_fp + "eposide_{}.pt".format(eps))
         torch.save(self.model.state_dict(), self.model_fp + "episode_{}.pt".format(eps))
 
@@ -180,6 +186,8 @@ class GossipAgent:
             beta = np.random.choice(self.beta_action, p=policy.detach().cpu().numpy())
         elif FLAGS.beta_net == 'ddpg':
             beta = policy.detach().cpu().item()
+        else:
+            beta = policy
 
         # Calculate gradient of peer model on local data (already done in stage 2)
 
@@ -246,4 +254,11 @@ class GossipAgent:
                 wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta.item(),
                            f'comm/beta_loss-{self.id}-{self.peer_id}': beta_loss.item(),
                            f'comm/beta_critic_loss-{self.id}-{self.peer_id}': beta_critic_loss.item(),
+                           f'comm/reward_{self.id}': reward}, commit=False)
+        else:
+            # log data
+            logging.debug('agent {} peer beta {}'.format(self.id, beta))
+            logging.debug('{} {} {} {}'.format(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))
+            if FLAGS.wandb:
+                wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
                            f'comm/reward_{self.id}': reward}, commit=False)
