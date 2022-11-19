@@ -32,10 +32,14 @@ def setup():
             combine_grad=FLAGS.combine_grad,
             env_mode=FLAGS.env_mode,
             grid_h=FLAGS.env_grid_h,
-            grid_w=FLAGS.env_grid_w
+            grid_w=FLAGS.env_grid_w,
+            cheat=FLAGS.cheat
         )
-        name = str(FLAGS.num_agents) + '_' + FLAGS.agent_info_mode + '_' + FLAGS.beta_net
-        wandb.init(project='Gossip Learning', entity='gossips', group='grid_not_move', job_type='test', name=name,
+        name = FLAGS.agent_info_mode + '_' + FLAGS.beta_net
+        if FLAGS.cheat:
+            name += '_cheat'
+        job = str(FLAGS.num_agents) + '_agents'
+        wandb.init(project='Gossip Learning', entity='gossips', group='grid_not_move', job_type=job, name=name,
                    config=config)
         wandb.define_metric('round')
         wandb.define_metric('comm/*', step_metric='round')
@@ -61,12 +65,17 @@ def main(argv):
     else:
         device = torch.device('cpu')
 
+    # Fetch test dataset
+    _, full_test = fetch_mnist_data()
+    test_dataloader = DataLoader(full_test, batch_size=256, shuffle=False)
+
     driver = Driver(
         num_agents      = FLAGS.num_agents, 
         agent_info_mode = FLAGS.agent_info_mode, 
         local_step_freq = FLAGS.local_step_freq,
         n_train_img     = FLAGS.n_train_img,
-        device          = device
+        device          = device,
+        cheat_data      = full_test
     )
 
     # Dictionary to store performance at each step
@@ -75,10 +84,6 @@ def main(argv):
     for id in driver.agents.keys():
         aucs[id] = list()
         local_aucs[id] = list()
-
-    # Fetch test dataset
-    _, full_test = fetch_mnist_data()
-    test_dataloader = DataLoader(full_test, batch_size=256, shuffle=False)
 
     # Run environment
     for i in range(FLAGS.num_env_steps):

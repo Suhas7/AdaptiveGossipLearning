@@ -92,12 +92,12 @@ def getAgentConfig(mode):
         distr = np.array([[a, 1, 1, 5], [b, 3, 1, 5]])
         return gen_distribution(distr)
     elif mode == 'dumb-1':
-        a = max(min(2, FLAGS.num_agents - 2), 0)
+        a = max(min(1, FLAGS.num_agents - 1), 0)
         b = FLAGS.num_agents - a
         distr = np.array([[a, 0, 1, 5], [b, 10, 1, 5]])
         return gen_distribution(distr)
     elif mode == 'dumb-2':
-        a = max(min(1, FLAGS.num_agents - 1), 0)
+        a = max(min(2, FLAGS.num_agents - 2), 0)
         b = FLAGS.num_agents - a
         distr = np.array([[a, 0, 1, 5], [b, 10, 1, 5]])
         return gen_distribution(distr)
