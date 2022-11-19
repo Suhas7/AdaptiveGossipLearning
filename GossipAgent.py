@@ -11,17 +11,16 @@ from MnistCNN import MnistCnn
 from sklearn import metrics
 
 FLAGS = flags.FLAGS
-
 flags.DEFINE_string('beta_net', 'classify', help='')
+flags.DEFINE_bool('cheat', True, help='')
 
 class GossipAgent:
     def __init__(self, aid, data, alpha=.5, sigma=.8, beta_num=11,
-                 coord=[0,0], lr=1e-2, combine_grad=False, device='cpu', dummy=False):
+                 coord=[0,0], lr=1e-2, combine_grad=False, device='cpu', dummy=False, cheat_data=None):
         # Agent metadata and hyper-parameters
         self.id = aid
         self.alpha = alpha
         self.sigma = sigma
-
         self.dumb = dummy
 
         # TODO: Load test data as well
@@ -30,6 +29,11 @@ class GossipAgent:
         self.dataloader = DataLoader(self.data, batch_size=64, shuffle=True)
         logging.info(f'agent {self.id} step per epoch {len(self.dataloader)}')
         self.device = device
+
+        self.cheat_data = cheat_data
+        self.cheat_dataloader = None
+        if cheat_data is not None:
+            self.cheat_dataloader = DataLoader(cheat_data, batch_size=64, shuffle=True)
 
         # Import agent model, both for prediction and beta policy
         if FLAGS.beta_net == 'classify':
@@ -176,8 +180,8 @@ class GossipAgent:
             other.stage5_helper(round)
 
     def stage5_helper(self, round):
-        # Given results of first 4 stages, update your local model
-        # Calculate local gradient
+        """Given results of first 4 stages, update local model"""
+        # Evaluate on local data
         self.local_auc, self.loss = self.evaluate(self.model, self.dataloader)
 
         # Calculate beta value
@@ -185,14 +189,15 @@ class GossipAgent:
         if FLAGS.beta_net == 'classify':
             beta = np.random.choice(self.beta_action, p=policy.detach().cpu().numpy())
         elif FLAGS.beta_net == 'ddpg':
-            beta = policy.detach().cpu().item()
+            beta = policy
+            # beta = torch.tensor(1, device=self.device).float()
         else:
             beta = policy
 
         # Calculate gradient of peer model on local data (already done in stage 2)
 
         # Combine models
-        # Approach 1: combine gradients with beta-weight
+        # Approach 1: combine gradients with beta-weight [likely to perform poorly]
         assert not self.combine_grad
         if self.combine_grad:
             self.optimizer.zero_grad()
@@ -205,15 +210,18 @@ class GossipAgent:
 
         # Approach 2: combine model parameters with beta-weight
         else:
-            pass
             state = self.model.state_dict()
             peer_state = self.peer_model.state_dict()
             for layer in state:
-                state[layer] = state[layer] * beta + peer_state[layer] * (1 - beta)
+                state[layer] = state[layer] * beta.detach() + peer_state[layer] * (1 - beta.detach())
             self.model.load_state_dict(state)
 
+        '''Update beta network'''
         # train beta using self.calculate_total_reward()
-        reward = self.alpha * self.local_auc + (1 - self.alpha) * self.calculate_rpeer()
+        if FLAGS.cheat:
+            reward = self.evaluate(self.model, self.cheat_dataloader)[0]
+        else:
+            reward = self.alpha * self.local_auc + (1 - self.alpha) * self.calculate_rpeer()
         assert 0 <= reward <= 1
         if FLAGS.beta_net == 'classify':
             beta_id = np.where(self.beta_action == beta)[0]
@@ -232,7 +240,8 @@ class GossipAgent:
         elif FLAGS.beta_net == 'ddpg':
             logging.debug('agent {} peer beta {}'.format(self.id, beta))
             logging.debug('{} {} {} {}'.format(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))
-            beta = self.beta_policy(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer, device=self.device)
+
+            # Update critic
             reward_predict = self.beta_critic(
                     self.local_auc, self.peer_acc, self.calculate_rpeer(),
                     self.other_rpeer, beta.detach(), device=self.device)
@@ -242,7 +251,8 @@ class GossipAgent:
             beta_critic_loss.backward()
             self.beta_critic_optimizer.step()
 
-            beta_loss = -self.beta_critic(self.local_auc, self.peer_acc, 
+            # Update actor
+            beta_loss = -self.beta_critic(self.local_auc, self.peer_acc,
                     self.calculate_rpeer(), self.other_rpeer, beta, device=self.device)
             logging.debug('agent {} beta loss {:.5f}'.format(self.id, beta_loss.item()))
             self.beta_policy_optimizer.zero_grad()
@@ -257,8 +267,9 @@ class GossipAgent:
                            f'comm/reward_{self.id}': reward}, commit=False)
         else:
             # log data
-            logging.debug('agent {} peer beta {}'.format(self.id, beta))
-            logging.debug('{} {} {} {}'.format(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))
             if FLAGS.wandb:
-                wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
-                           f'comm/reward_{self.id}': reward}, commit=False)
+                logging.debug('agent {} peer beta {}'.format(self.id, beta))
+                logging.debug('{} {} {} {}'.format(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))
+                if FLAGS.wandb:
+                    wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
+                               f'comm/reward_{self.id}': reward}, commit=False)
