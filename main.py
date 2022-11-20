@@ -42,6 +42,8 @@ def setup():
         wandb.init(project='Gossip Learning', entity='gossips', group='grid_not_move', job_type=job, name=name,
                    config=config)
         wandb.define_metric('round')
+        wandb.define_metric('comm_loss/*', step_metric='round')
+        wandb.define_metric('comm_r/*', step_metric='round')
         wandb.define_metric('comm/*', step_metric='round')
         wandb.define_metric('auc/*', step_metric='round')
         wandb.define_metric('local_auc/*', step_metric='round')

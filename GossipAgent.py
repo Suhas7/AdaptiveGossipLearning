@@ -235,8 +235,8 @@ class GossipAgent:
             # log data
             if FLAGS.wandb:
                 wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
-                           f'comm/beta_loss-{self.id}-{self.peer_id}': beta_loss,
-                           f'comm/reward_{self.id}': reward}, commit=False)
+                           f'comm_loss/beta_loss-{self.id}-{self.peer_id}': beta_loss,
+                           f'comm_r/reward_{self.id}': reward}, commit=False)
         elif FLAGS.beta_net == 'ddpg':
             logging.debug('agent {} peer beta {}'.format(self.id, beta))
             logging.debug('{} {} {} {}'.format(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))
@@ -262,9 +262,9 @@ class GossipAgent:
             # log data
             if FLAGS.wandb:
                 wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta.item(),
-                           f'comm/beta_loss-{self.id}-{self.peer_id}': beta_loss.item(),
-                           f'comm/beta_critic_loss-{self.id}-{self.peer_id}': beta_critic_loss.item(),
-                           f'comm/reward_{self.id}': reward}, commit=False)
+                           f'comm_loss/beta_loss-{self.id}-{self.peer_id}': beta_loss.item(),
+                           f'comm_loss/beta_critic_loss-{self.id}-{self.peer_id}': beta_critic_loss.item(),
+                           f'comm_r/reward_{self.id}': reward}, commit=False)
         else:
             # log data
             if FLAGS.wandb:
@@ -272,4 +272,4 @@ class GossipAgent:
                 logging.debug('{} {} {} {}'.format(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))
                 if FLAGS.wandb:
                     wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
-                               f'comm/reward_{self.id}': reward}, commit=False)
+                               f'comm_r/reward_{self.id}': reward}, commit=False)

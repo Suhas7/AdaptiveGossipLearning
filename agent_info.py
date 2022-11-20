@@ -104,7 +104,7 @@ def getAgentConfig(mode):
     elif mode == '2dumb-1':  # 2 dumb agent, other agent has data from 10 classes
         a = max(min(2, FLAGS.num_agents - 2), 0)
         b = FLAGS.num_agents - a
-        distr = np.array([[a, 0, 1, 5], [b, 10, 1, ]])
+        distr = np.array([[a, 0, 1, 5], [b, 10, 1, 10]])
         return gen_distribution(distr)
     elif mode == 'dumb-3':
         a = max(min(1, FLAGS.num_agents - 1), 0)
