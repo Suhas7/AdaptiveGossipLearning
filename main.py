@@ -20,6 +20,7 @@ flags.DEFINE_integer('n_train_img', 1000, lower_bound=2, help='')
 flags.DEFINE_string('logdir', None, help='')
 flags.mark_flag_as_required('logdir')
 flags.DEFINE_bool('wandb', True, help='')
+flags.DEFINE_string('comment', '', help='')
 
 def setup():
     if FLAGS.wandb:
@@ -35,7 +36,7 @@ def setup():
             grid_w=FLAGS.env_grid_w,
             cheat=FLAGS.cheat
         )
-        name = FLAGS.agent_info_mode + '_' + FLAGS.beta_net
+        name = FLAGS.agent_info_mode + '_' + FLAGS.beta_net + '_' + FLAGS.comment
         if FLAGS.cheat:
             name += '_cheat'
         job = str(FLAGS.num_agents) + '_agents'

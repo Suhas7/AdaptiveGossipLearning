@@ -111,18 +111,26 @@ def getAgentConfig(mode):
         b = FLAGS.num_agents - a
         distr = np.array([[a, 0, 1, 5], [b, int(10 / FLAGS.num_agents) + 1, 1, 15]])
         return gen_distribution(distr)
-    elif mode == 'extreme':
+    elif mode == '1dumb-extreme-1':
+        dumb_cnt = max(min(1, FLAGS.num_agents-1), 0)
+        smart_cnt = FLAGS.num_agents - dumb_cnt
+        dummy_indicator = [1]*dumb_cnt + [0]*smart_cnt
+        offset = dumb_cnt
+
         dists = [np.zeros(FLAGS.num_class) for _ in range(FLAGS.num_agents)]
         tot = FLAGS.num_class
-        per = tot // FLAGS.num_agents
-        cls_count = [per] * FLAGS.num_agents
-        left = tot - sum(cls_count)
+        per = tot // smart_cnt
+        cls_count = [None] * dumb_cnt + [per] * smart_cnt
+        
+        left = tot - sum(cls_count[offset:])
         for i in range(left):
-            cls_count[i] += 1
+            cls_count[i+offset] += 1
 
-        for i in range(FLAGS.num_agents):
-            pre = sum(cls_count[:i])
-            dists[i][pre:pre+cls_count[i]] = 1 / cls_count[i]
+        for i in range(dumb_cnt):
+            dists[i][:] = 1 / FLAGS.num_class
+        for i in range(smart_cnt):
+            pre = sum(cls_count[offset:offset+i])
+            dists[offset+i][pre:pre+cls_count[offset+i]] = 1 / cls_count[i+offset]
         print(dists)
 
         return AgentConfig(
@@ -130,7 +138,36 @@ def getAgentConfig(mode):
             sigmas=0.5 * np.ones(FLAGS.num_agents),
             dists=dists,
             start_coords=[(0, 0) for _ in range(FLAGS.num_agents)],
-            dummy=[False for _ in range(FLAGS.num_agents)]
+            dummy=dummy_indicator
+        )
+    elif mode == 'extreme-1':
+        dumb_cnt = 0
+        smart_cnt = FLAGS.num_agents - dumb_cnt
+        dummy_indicator = [1]*dumb_cnt + [0]*smart_cnt
+        offset = dumb_cnt
+
+        dists = [np.zeros(FLAGS.num_class) for _ in range(FLAGS.num_agents)]
+        tot = FLAGS.num_class
+        per = tot // smart_cnt
+        cls_count = [None] * dumb_cnt + [per] * smart_cnt
+        
+        left = tot - sum(cls_count[offset:])
+        for i in range(left):
+            cls_count[i+offset] += 1
+
+        for i in range(dumb_cnt):
+            dists[i][:] = 1 / FLAGS.num_class
+        for i in range(smart_cnt):
+            pre = sum(cls_count[offset:offset+i])
+            dists[offset+i][pre:pre+cls_count[offset+i]] = 1 / cls_count[i+offset]
+        print(dists)
+
+        return AgentConfig(
+            alphas=0.5 * np.ones(FLAGS.num_agents),
+            sigmas=0.5 * np.ones(FLAGS.num_agents),
+            dists=dists,
+            start_coords=[(0, 0) for _ in range(FLAGS.num_agents)],
+            dummy=dummy_indicator
         )
     else:
         raise NotImplementedError(f"agent_info mode not implemented {mode}")
