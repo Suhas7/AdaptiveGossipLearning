@@ -197,16 +197,17 @@ class GossipAgent:
         # Calculate gradient of peer model on local data (already done in stage 2)
 
         # Combine models
-        # Approach 1: combine gradients with beta-weight [likely to perform poorly]
-        assert not self.combine_grad
+        # Approach 1: combine gradients with beta-weight
+        #assert not self.combine_grad
         if self.combine_grad:
             self.optimizer.zero_grad()
             self.loss.backward()
             self.peer_loss.backward()
             for local_param, peer_param in zip(self.model.parameters(), self.peer_model.parameters()):
-                if local_param.grad != None and peer_param.grad != None:
-                    local_param.grad = local_param.grad * beta + peer_param.grad * (1 - beta)
-                self.optimizer.step()  # 1-step of learning from gradient
+                if local_param.grad == None: continue
+                if peer_param.grad == None: continue
+                local_param.grad = local_param.grad * beta + peer_param.grad * (1 - beta)
+            self.optimizer.step()  # 1-step of learning from gradient
 
         # Approach 2: combine model parameters with beta-weight
         else:
