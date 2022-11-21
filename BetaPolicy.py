@@ -30,7 +30,7 @@ class BetaCritic(nn.Module):
 
     def forward(self, local_auc, peer_acc, calculate_rpeer, other_rpeer, beta_val, device='cpu'):
         x = torch.tensor([local_auc, peer_acc, calculate_rpeer, other_rpeer]).float().to(device)
-        x = torch.concatenate([x, beta_val])
+        x = torch.cat([x, beta_val])
 
         # squash it to [0, 1]
         q_value = (torch.tanh(self.linear(x)) + 1) / 2
