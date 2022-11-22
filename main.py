@@ -98,6 +98,7 @@ def main(argv):
         for id, agent in driver.agents.items():
             auc = agent.evaluate(agent.model, test_dataloader)[0]
             local_auc = agent.evaluate(agent.model, agent.dataloader)[0]
+            logging.debug(f'agent {id} auc {auc:.5f} local_auc {local_auc:.5f}')
             aucs[id].append(auc)
             local_aucs[id].append(local_auc)
 

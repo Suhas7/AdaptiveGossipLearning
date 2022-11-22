@@ -16,7 +16,7 @@ flags.DEFINE_bool('cheat', True, help='')
 
 class GossipAgent:
     def __init__(self, aid, dataset, alpha=.5, sigma=.8, beta_num=11,
-                 coord=[0,0], lr=1e-2, combine_grad=False, device='cpu', dummy=False, cheat_data=None):
+                 coord=[0,0], lr=1e-3, combine_grad=False, device='cpu', dummy=False, cheat_data=None):
         # Agent metadata and hyper-parameters
         self.id = aid
         self.alpha = alpha
@@ -187,14 +187,19 @@ class GossipAgent:
         self.local_auc, self.loss = self.evaluate(self.model, self.dataloader)
 
         # Calculate beta value
-        policy = self.beta_policy(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer, device=self.device)
+        action = self.beta_policy(
+                    self.local_auc, # Acc(self.model, self.dataset)
+                    self.peer_acc,
+                    self.calculate_rpeer(), # r_feedback(self)
+                    self.other_rpeer, # r_feedback(other)
+                    device=self.device)
         if FLAGS.beta_net == 'classify':
-            beta = np.random.choice(self.beta_action, p=policy.detach().cpu().numpy())
+            beta = np.random.choice(self.beta_action, p=action.detach().cpu().numpy())
         elif FLAGS.beta_net == 'ddpg':
-            beta = policy.detach()
+            beta = action.detach()
             # beta = torch.tensor(1, device=self.device).float()
         else:
-            beta = policy
+            beta = action
 
         # Calculate gradient of peer model on local data (already done in stage 2)
 
@@ -230,7 +235,7 @@ class GossipAgent:
             beta_id = np.where(self.beta_action == beta)[0]
             logging.debug('beta id {} beta {}'.format(beta_id, beta))
             action_onehot = F.one_hot(torch.tensor(beta_id), self.beta_num).to(self.device)
-            beta_loss = -torch.sum(torch.log(torch.clip(action_onehot * policy, 1e-10, 1.0)) * reward)
+            beta_loss = -torch.sum(torch.log(torch.clip(action_onehot * action, 1e-10, 1.0)) * reward)
             self.beta_optimizer.zero_grad()
             beta_loss.backward()
             self.beta_optimizer.step()
@@ -242,25 +247,41 @@ class GossipAgent:
                            f'comm_r/reward_{self.id}': reward}, commit=False)
         elif FLAGS.beta_net == 'ddpg':
             logging.debug('agent {} peer beta {}'.format(self.id, beta))
-            logging.debug('{} {} {} {}'.format(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))
+            logging.debug(f'agent {self.id} local_auc {self.local_auc:.5f} my_other_acc {self.my_other_acc:.5f} r_feedback(self) {self.calculate_rpeer():.5f} r_feedback(other) {self.other_rpeer:.5f}')
+
+            # Update actor
+            for _ in range(10):
+                action = self.beta_policy(
+                            self.local_auc, # Acc(self.model, self.dataset)
+                            self.peer_acc,
+                            self.calculate_rpeer(), # r_feedback(self)
+                            self.other_rpeer, # r_feedback(other)
+                            device=self.device)
+                beta_loss = -self.beta_critic(
+                        self.local_auc, # Acc(self.model, self.dataset)
+                        self.peer_acc, # Acc(self.model, other.dataset)
+                        self.calculate_rpeer(), # r_feedback(self)
+                        self.other_rpeer, # r_feedback(other)
+                        action, # action is beta with gradient
+                        device=self.device) 
+                logging.debug('agent {} beta action {} beta loss {:.5f}'.format(self.id, action, beta_loss.item()))
+                self.beta_policy_optimizer.zero_grad()
+                beta_loss.backward()
+                self.beta_policy_optimizer.step()
 
             # Update critic
             reward_predict = self.beta_critic(
-                    self.local_auc, self.peer_acc, self.calculate_rpeer(),
-                    self.other_rpeer, beta.detach(), device=self.device)
+                    self.local_auc, # Acc(self.model, self.dataset)
+                    self.peer_acc, # 
+                    self.calculate_rpeer(), # r_feedback(self)
+                    self.other_rpeer, # r_feedback(other)
+                    beta, device=self.device)
+            
             beta_critic_loss = (reward_predict - reward)**2
             logging.debug('agent {} critic loss {:.5f}'.format(self.id, beta_critic_loss.item()))
             self.beta_critic_optimizer.zero_grad()
             beta_critic_loss.backward()
             self.beta_critic_optimizer.step()
-
-            # Update actor
-            beta_loss = -self.beta_critic(self.local_auc, self.peer_acc,
-                    self.calculate_rpeer(), self.other_rpeer, beta, device=self.device)
-            logging.debug('agent {} beta loss {:.5f}'.format(self.id, beta_loss.item()))
-            self.beta_policy_optimizer.zero_grad()
-            beta_loss.backward()
-            self.beta_policy_optimizer.step()
 
             # log data
             if FLAGS.wandb:

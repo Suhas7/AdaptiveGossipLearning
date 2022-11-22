@@ -5,23 +5,30 @@ import torch.nn.functional as F
 class LinearPolicy(torch.nn.Module):
     def __init__(self, input_dim, action_num):
         super().__init__()
-        self.linear = torch.nn.Linear(input_dim, action_num)
+        self.linear = nn.Sequential(
+                nn.Linear(input_dim, input_dim),
+                nn.Tanh(),
+                nn.Linear(input_dim, action_num),
+                nn.Sigmoid()
+            )
 
     def forward(self, local_auc, peer_acc, calculate_rpeer, other_rpeer, device='cpu'):
         x = torch.tensor([local_auc, peer_acc, calculate_rpeer, other_rpeer]).float().to(device)
-        output = torch.softmax(self.linear(x), dim=-1)
-        return output
+        return self.linear(x)
 
 class LinearCritic(nn.Module):
     def __init__(self, input_dim, action_num):
         super().__init__()
-        self.linear = nn.Linear(input_dim + action_num, 1)
+
+        self.linear = nn.Sequential(
+                nn.Linear(input_dim + action_num, input_dim + action_num),
+                nn.Tanh(),
+                nn.Linear(input_dim + action_num, 1),
+                nn.Sigmoid()
+            )
 
     def forward(self, local_auc, peer_acc, calculate_rpeer, other_rpeer, beta_val, device='cpu'):
         x = torch.tensor([local_auc, peer_acc, calculate_rpeer, other_rpeer]).float().to(device)
         x = torch.cat([x, beta_val])
 
-        # squash it to [0, 1]
-        q_value = torch.softmax(self.linear(x), dim=-1)
-
-        return q_value
+        return self.linear(x)
