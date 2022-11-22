@@ -54,7 +54,7 @@ class DataDistributor:
             if dist[cur_idx] > 0:
                 size[cur_idx] += 1
                 remain_cnt -= 1
-                cur_idx += 1
+            cur_idx += 1
 
         logging.debug(f'seed {seed} datadist {size}')
 
