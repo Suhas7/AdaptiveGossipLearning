@@ -2,14 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-'''CNN model adapted from Kaggle
-https://www.kaggle.com/cdeotte/25-million-images-0-99757-mnist
-Achieves 89% accuracy on this system.'''
-
-
-class Net(nn.Module):
+class MnistCnn(nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
+        super(MnistCnn, self).__init__()
         self.dropout_layer = nn.Dropout2d(0.4)
 
         self.conv1 = nn.Conv2d(1, 32, 3)
@@ -26,8 +21,6 @@ class Net(nn.Module):
         self.batchnorm_128 = nn.BatchNorm2d(128)
 
         self.flat_dim = 128
-        # self.flat_dim = (int(
-        #     ((28 - (4 - 1)) / 2 - (4 - 1)) // 2) ** 2) * 40
         self.linear_layer = nn.Linear(self.flat_dim, 10)
 
     def forward(self, x):
@@ -37,20 +30,15 @@ class Net(nn.Module):
         x = self.batchnorm_32(x)
         x = F.relu(self.conv3(x))
         x = self.batchnorm_32(x)
-        x = self.dropout_layer(x)
 
         x = F.relu(self.conv4(x))
         x = self.batchnorm_64(x)
         x = F.relu(self.conv5(x))
         x = self.batchnorm_64(x)
         x = F.relu(self.conv6(x))
-        # x = self.batchnorm_64(x)
-        x = self.dropout_layer(x)
 
         x = F.relu(self.conv7(x))
-        x = self.batchnorm_128(x)
         x = x.view(-1, self.flat_dim)
-        # x = self.dropout_layer(x)
         x = self.linear_layer(x)
 
         return x

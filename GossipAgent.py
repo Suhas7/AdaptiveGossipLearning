@@ -6,8 +6,8 @@ from torch.utils.data import DataLoader
 from absl import logging, flags
 from tqdm import tqdm
 
-from BetaPolicy import BetaPolicy, BetaAgent, BetaCritic
-from MnistCNN import MnistCnn
+from policy import LinearCritic, LinearPolicy
+from models import MnistMlp
 from sklearn import metrics
 
 FLAGS = flags.FLAGS
@@ -38,12 +38,12 @@ class GossipAgent:
         # Import agent model, both for prediction and beta policy
         if FLAGS.beta_net == 'classify':
             self.beta_num = beta_num  # Number of discrete beta values to choose from
-            self.beta_policy = BetaPolicy(4, beta_num).to(device)
+            self.beta_policy = LinearPolicy(4, beta_num).to(device)
             self.beta_action = np.linspace(0, 1, beta_num)
             self.beta_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
         elif FLAGS.beta_net == 'ddpg':
-            self.beta_policy = BetaAgent(4, 1).to(device)
-            self.beta_critic = BetaCritic(4, 1).to(device)
+            self.beta_policy = LinearAgent(4, 1).to(device)
+            self.beta_critic = LinearCritic(4, 1).to(device)
             self.beta_policy_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
             self.beta_critic_optimizer = torch.optim.Adam(self.beta_critic.parameters(), lr=lr)
         elif FLAGS.beta_net.startswith('fix-'):
@@ -53,9 +53,9 @@ class GossipAgent:
         else:
             raise Exception(FLAGS.beta_net)
 
-        self.model = MnistCnn().to(device)
+        self.model = MnistMlp().to(device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
-        self.peer_model = MnistCnn().to(device)
+        self.peer_model = MnistMlp().to(device)
 
         # Model & Log Outputs
         self.beta_fp = "./betas/agent_{}/".format(aid)
