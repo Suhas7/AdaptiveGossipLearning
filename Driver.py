@@ -41,7 +41,7 @@ class Driver:
         for i in range(num_agents):
             self.agents[i] = GossipAgent(
                 aid=i,
-                data=self.distributor.distribute_data(agentConfig.dists[i], self.n_train_img),
+                dataset=self.distributor.distribute_data(agentConfig.dists[i], self.n_train_img, i),
                 alpha=agentConfig.alphas[i],
                 sigma=agentConfig.sigmas[i],
                 coord=agentConfig.start_coords[i],

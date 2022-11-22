@@ -15,7 +15,7 @@ flags.DEFINE_string('beta_net', 'classify', help='')
 flags.DEFINE_bool('cheat', True, help='')
 
 class GossipAgent:
-    def __init__(self, aid, data, alpha=.5, sigma=.8, beta_num=11,
+    def __init__(self, aid, dataset, alpha=.5, sigma=.8, beta_num=11,
                  coord=[0,0], lr=1e-2, combine_grad=False, device='cpu', dummy=False, cheat_data=None):
         # Agent metadata and hyper-parameters
         self.id = aid
@@ -24,10 +24,12 @@ class GossipAgent:
         self.dumb = dummy
 
         # TODO: Load test data as well
-        self.data = data
-        logging.info(f'agent {self.id} data size {len(data)}')
-        self.dataloader = DataLoader(self.data, batch_size=64, shuffle=True)
+        self.dataset = dataset
+        self.dataloader = DataLoader(self.dataset, batch_size=64, shuffle=True)
+
+        logging.info(f'agent {self.id} data size {len(dataset)}')
         logging.info(f'agent {self.id} step per epoch {len(self.dataloader)}')
+        
         self.device = device
 
         self.cheat_data = cheat_data
@@ -42,7 +44,7 @@ class GossipAgent:
             self.beta_action = np.linspace(0, 1, beta_num)
             self.beta_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
         elif FLAGS.beta_net == 'ddpg':
-            self.beta_policy = LinearAgent(4, 1).to(device)
+            self.beta_policy = LinearPolicy(4, 1).to(device)
             self.beta_critic = LinearCritic(4, 1).to(device)
             self.beta_policy_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
             self.beta_critic_optimizer = torch.optim.Adam(self.beta_critic.parameters(), lr=lr)
@@ -189,7 +191,7 @@ class GossipAgent:
         if FLAGS.beta_net == 'classify':
             beta = np.random.choice(self.beta_action, p=policy.detach().cpu().numpy())
         elif FLAGS.beta_net == 'ddpg':
-            beta = policy
+            beta = policy.detach()
             # beta = torch.tensor(1, device=self.device).float()
         else:
             beta = policy
@@ -214,7 +216,7 @@ class GossipAgent:
             state = self.model.state_dict()
             peer_state = self.peer_model.state_dict()
             for layer in state:
-                state[layer] = state[layer] * beta.detach() + peer_state[layer] * (1 - beta.detach())
+                state[layer] = state[layer] * beta + peer_state[layer] * (1 - beta)
             self.model.load_state_dict(state)
 
         '''Update beta network'''

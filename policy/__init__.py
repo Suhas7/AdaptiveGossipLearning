@@ -1,1 +1,1 @@
-from .BetaPolicy import LinearPolicy, LinearDDPGAgent, LinearDDPGCritic
+from .BetaPolicy import LinearPolicy, LinearCritic

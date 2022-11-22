@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class LinearPolicy(torch.nn.Module):
     def __init__(self, input_dim, action_num):
-        super(BetaPolicy, self).__init__()
+        super().__init__()
         self.linear = torch.nn.Linear(input_dim, action_num)
 
     def forward(self, local_auc, peer_acc, calculate_rpeer, other_rpeer, device='cpu'):
@@ -22,6 +22,6 @@ class LinearCritic(nn.Module):
         x = torch.cat([x, beta_val])
 
         # squash it to [0, 1]
-        q_value = torch.softmax(self.linear(x))
+        q_value = torch.softmax(self.linear(x), dim=-1)
 
         return q_value

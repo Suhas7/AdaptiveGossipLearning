@@ -6,8 +6,6 @@ import numpy as np
 import numpy.typing as npt
 
 from random import seed
-seed(0)
-np.random.seed(0)
 
 
 FLAGS = flags.FLAGS
@@ -15,6 +13,7 @@ flags.DEFINE_integer('num_agents', None, lower_bound=1, help='')
 flags.mark_flag_as_required('num_agents')
 flags.DEFINE_integer('num_class', None, lower_bound=1, help='')
 flags.mark_flag_as_required('num_class')
+flags.DEFINE_integer('seed', 0, help='')
 
 @dataclass
 class AgentConfig:
@@ -66,6 +65,9 @@ def gen_distribution(distributions=None):
     )
 
 def getAgentConfig(mode):
+    seed(FLAGS.seed)
+    np.random.seed(FLAGS.seed)
+    
     if mode == 'default':
         return AgentConfig(
             alphas=0.5*np.ones(FLAGS.num_agents),

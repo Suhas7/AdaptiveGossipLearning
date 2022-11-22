@@ -63,8 +63,8 @@ def main(argv):
     # Select device
     if torch.cuda.is_available():
         device = torch.device('cuda')
-    elif torch.backends.mps.is_available():
-        device = torch.device('mps')
+#    elif torch.backends.mps.is_available():
+#        device = torch.device('mps')
     else:
         device = torch.device('cpu')
 
@@ -110,6 +110,7 @@ def main(argv):
                 else:
                     wandb.log({'auc/' + str(id): auc, 'local_auc/' + str(id): local_auc})
 
+    # local logging
     with open(f'{FLAGS.logdir}/Agent_auc.txt', 'a') as f:
         for id in aucs:
             print(id, file=f)
@@ -117,8 +118,6 @@ def main(argv):
     x = np.arange(FLAGS.num_env_steps)
     for id in driver.agents.keys():
         plt.plot(x, aucs[id], label=f'{id}')
-    #output = sum(np.asarray(list(driver.agents.values()))/len(driver.agents.keys())
-    #print(output)
     plt.legend()
     plt.savefig(f"{FLAGS.logdir}/Agents Curve", bbox_inches='tight')
     plt.clf()

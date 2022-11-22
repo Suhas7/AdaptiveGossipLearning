@@ -1,8 +1,10 @@
 from collections import defaultdict
 from tqdm import tqdm
 import torch
+from absl import logging
 from torchvision import datasets, transforms
-import random
+from torch.utils.data import Subset
+import numpy as np
 
 
 def fetch_mnist_data():
@@ -22,33 +24,16 @@ class DataDistributor:
     :type data: List
     :type num_classes: int
     """
-    def __init__(self, data, num_classes, device):
-        self.classes = num_classes
+    def __init__(self, dataset, num_classes, device):
+        self.num_classes = num_classes
         self.device = device
+        self.dataset = dataset
         self.buckets = defaultdict(list)
-        self.assign_data(data)
-
-    # Collects data into according buckets based on precomputed bucket assignment
-    def assign_data(self, dataset):
-        """
-        Places data into according buckets based on precomputed bucket assignment.
-
-        :param data: List of data
-        
-        :type data: List
-        """
-        for elem in tqdm(dataset, desc="Partition dataset based on labels"):
-            self.buckets[elem[1]].append(elem)
-
-        '''Use this if want to move all data to gpu at first'''
-        # image = dataset.data.to(self.device)
-        # label = dataset.targets.to(self.device)
-        #
-        # for (image, label) in tqdm(zip(image, label), total=image.shape[0]):
-        #     self.buckets[label.item()].append((image, label))
+        for idx, (_, label) in enumerate(dataset):
+            self.buckets[label].append(idx)
 
     # TODO: split data into training / validation sets
-    def distribute_data(self, dist, num_elements):
+    def distribute_data(self, dist, num_elements, seed):
         """
         Leverages Pythons random library to split data into non-iid subsets.
 
@@ -58,13 +43,27 @@ class DataDistributor:
         :type dist: List of ints or List of floats
         :type num_elements: int
         """
-        if sum(dist) > 1:
-            dist = [float(a) / float(sum(dist)) for a in dist]
+        # calculate size for each class
+        assert abs(sum(dist) - 1) < 1e-5
+        assert len(dist) == self.num_classes
+        size = [int(dist[i]*num_elements) for i in range(self.num_classes)]
+        # distribute the remaining elements due to rounding
+        remain_cnt = num_elements - sum(size)
+        cur_idx = 0
+        while remain_cnt > 0:
+            if dist[cur_idx] > 0:
+                size[cur_idx] += 1
+                remain_cnt -= 1
+                cur_idx += 1
 
-        data = []
-        for i in range(self.classes):
-            num_unique = int(dist[i] * num_elements)
-            data.extend(random.sample(self.buckets[i], num_unique))
-            
-        random.shuffle(data)
-        return data
+        logging.debug(f'seed {seed} datadist {size}')
+
+        # random generator for sampling
+        rng = np.random.default_rng(seed=seed)
+        all_idx = []
+        for i in range(self.num_classes):
+            all_idx.append(rng.choice(self.buckets[i], size=size[i], replace=False))
+
+        all_idx = np.concatenate(all_idx)
+
+        return Subset(self.dataset, all_idx)
