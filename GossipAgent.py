@@ -1,4 +1,5 @@
 import numpy as np
+import random
 import torch
 import torch.nn.functional as F
 import wandb
@@ -48,6 +49,7 @@ class GossipAgent:
             self.beta_critic = LinearCritic(4, 1).to(device)
             self.beta_policy_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
             self.beta_critic_optimizer = torch.optim.Adam(self.beta_critic.parameters(), lr=lr)
+            self.buffer = []
         elif FLAGS.beta_net.startswith('fix-'):
             def _f(*args, **kwargs):
                 return float(FLAGS.beta_net.strip('fix-'))
@@ -196,7 +198,7 @@ class GossipAgent:
         if FLAGS.beta_net == 'classify':
             beta = np.random.choice(self.beta_action, p=action.detach().cpu().numpy())
         elif FLAGS.beta_net == 'ddpg':
-            beta = action.detach()
+            beta = action.item()
             # beta = torch.tensor(1, device=self.device).float()
         else:
             beta = action
@@ -250,14 +252,14 @@ class GossipAgent:
             logging.debug(f'agent {self.id} local_auc {self.local_auc:.5f} my_other_acc {self.my_other_acc:.5f} r_feedback(self) {self.calculate_rpeer():.5f} r_feedback(other) {self.other_rpeer:.5f}')
 
             # Update actor
-            for _ in range(10):
+            for _ in range(5):
                 action = self.beta_policy(
                             self.local_auc, # Acc(self.model, self.dataset)
                             self.peer_acc,
                             self.calculate_rpeer(), # r_feedback(self)
                             self.other_rpeer, # r_feedback(other)
                             device=self.device)
-                beta_loss = -self.beta_critic(
+                beta_loss = -self.beta_critic.actor_forward(
                         self.local_auc, # Acc(self.model, self.dataset)
                         self.peer_acc, # Acc(self.model, other.dataset)
                         self.calculate_rpeer(), # r_feedback(self)
@@ -270,18 +272,19 @@ class GossipAgent:
                 self.beta_policy_optimizer.step()
 
             # Update critic
-            reward_predict = self.beta_critic(
-                    self.local_auc, # Acc(self.model, self.dataset)
-                    self.peer_acc, # 
-                    self.calculate_rpeer(), # r_feedback(self)
-                    self.other_rpeer, # r_feedback(other)
-                    beta, device=self.device)
-            
-            beta_critic_loss = (reward_predict - reward)**2
-            logging.debug('agent {} critic loss {:.5f}'.format(self.id, beta_critic_loss.item()))
-            self.beta_critic_optimizer.zero_grad()
-            beta_critic_loss.backward()
-            self.beta_critic_optimizer.step()
+            self.buffer.append(((self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer, beta), reward))
+            for _ in range(5):
+                batch_size = 32
+                batch = random.sample(self.buffer, k=min(len(self.buffer), batch_size))
+                batch_x = torch.stack([torch.tensor(b[0]) for b in batch]).float()
+                batch_y = torch.tensor([b[1] for b in batch]).float().to(self.device)
+
+                reward_pred = self.beta_critic(batch_x, device=self.device).flatten()
+                beta_critic_loss = F.mse_loss(reward_pred, batch_y)
+                logging.debug('agent {} critic loss {:.5f}'.format(self.id, beta_critic_loss.item()))
+                self.beta_critic_optimizer.zero_grad()
+                beta_critic_loss.backward()
+                self.beta_critic_optimizer.step()
 
             # log data
             if FLAGS.wandb:

@@ -27,8 +27,11 @@ class LinearCritic(nn.Module):
                 nn.Sigmoid()
             )
 
-    def forward(self, local_auc, peer_acc, calculate_rpeer, other_rpeer, beta_val, device='cpu'):
+    def actor_forward(self, local_auc, peer_acc, calculate_rpeer, other_rpeer, beta_val, device='cpu'):
         x = torch.tensor([local_auc, peer_acc, calculate_rpeer, other_rpeer]).float().to(device)
         x = torch.cat([x, beta_val])
 
+        return self.linear(x)
+    def forward(self, x, device='cpu'):
+        x = x.to(device)
         return self.linear(x)
