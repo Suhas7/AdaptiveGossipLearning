@@ -12,8 +12,7 @@ class LinearPolicy(torch.nn.Module):
                 nn.Sigmoid()
             )
 
-    def forward(self, local_auc, peer_acc, calculate_rpeer, other_rpeer, device='cpu'):
-        x = torch.tensor([local_auc, peer_acc, calculate_rpeer, other_rpeer]).float().to(device)
+    def forward(self, x):
         return self.linear(x)
 
 class LinearCritic(nn.Module):
@@ -21,17 +20,15 @@ class LinearCritic(nn.Module):
         super().__init__()
 
         self.linear = nn.Sequential(
-                nn.Linear(input_dim + action_num, input_dim + action_num),
+                nn.Linear(input_dim, input_dim),
                 nn.Tanh(),
-                nn.Linear(input_dim + action_num, 1),
+                nn.Linear(input_dim, action_num),
                 nn.Sigmoid()
             )
 
-    def actor_forward(self, local_auc, peer_acc, calculate_rpeer, other_rpeer, beta_val, device='cpu'):
-        x = torch.tensor([local_auc, peer_acc, calculate_rpeer, other_rpeer]).float().to(device)
-        x = torch.cat([x, beta_val])
-
+    def actor_forward(self, x, beta):
+        x = torch.cat([x, beta], dim=1)
         return self.linear(x)
-    def forward(self, x, device='cpu'):
-        x = x.to(device)
+
+    def forward(self, x):
         return self.linear(x)

@@ -24,6 +24,8 @@ class GossipAgent:
         self.sigma = sigma
         self.dumb = dummy
 
+        self.ob_history = 5
+
         # TODO: Load test data as well
         self.dataset = dataset
         self.dataloader = DataLoader(self.dataset, batch_size=64, shuffle=True)
@@ -41,12 +43,12 @@ class GossipAgent:
         # Import agent model, both for prediction and beta policy
         if FLAGS.beta_net == 'classify':
             self.beta_num = beta_num  # Number of discrete beta values to choose from
-            self.beta_policy = LinearPolicy(4, beta_num).to(device)
+            self.beta_policy = LinearPolicy(4*self.ob_history, beta_num).to(device)
             self.beta_action = np.linspace(0, 1, beta_num)
             self.beta_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
         elif FLAGS.beta_net == 'ddpg':
-            self.beta_policy = LinearPolicy(4, 1).to(device)
-            self.beta_critic = LinearCritic(4, 1).to(device)
+            self.beta_policy = LinearPolicy(5*self.ob_history-1, 1).to(device)
+            self.beta_critic = LinearCritic(5*self.ob_history, 1).to(device)
             self.beta_policy_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
             self.beta_critic_optimizer = torch.optim.Adam(self.beta_critic.parameters(), lr=lr)
             self.buffer = []
@@ -189,12 +191,14 @@ class GossipAgent:
         self.local_auc, self.loss = self.evaluate(self.model, self.dataloader)
 
         # Calculate beta value
-        action = self.beta_policy(
-                    self.local_auc, # Acc(self.model, self.dataset)
-                    self.peer_acc,
-                    self.calculate_rpeer(), # r_feedback(self)
-                    self.other_rpeer, # r_feedback(other)
-                    device=self.device)
+        if len(self.buffer) < self.ob_history-1:
+            action = torch.rand(1).squeeze(0) / 10
+        else:
+            x = torch.concat([torch.tensor(ob) for ob, _ in self.buffer[-self.ob_history+1:]])
+            x = torch.concat([x, torch.tensor((self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))]).float().to(self.device)
+
+            action = self.beta_policy(x)
+
         if FLAGS.beta_net == 'classify':
             beta = np.random.choice(self.beta_action, p=action.detach().cpu().numpy())
         elif FLAGS.beta_net == 'ddpg':
@@ -216,6 +220,7 @@ class GossipAgent:
                 if local_param.grad == None: continue
                 if peer_param.grad == None: continue
                 local_param.grad = local_param.grad * beta + peer_param.grad * (1 - beta)
+                local_param.grad = torch.clip(local_param.grad, -1, 1)
             self.optimizer.step()  # 1-step of learning from gradient
 
         # Approach 2: combine model parameters with beta-weight
@@ -233,6 +238,9 @@ class GossipAgent:
         else:
             reward = self.alpha * self.local_auc + (1 - self.alpha) * self.calculate_rpeer()
         assert 0 <= reward <= 1
+
+        self.buffer.append(((self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer, beta), reward))
+
         if FLAGS.beta_net == 'classify':
             beta_id = np.where(self.beta_action == beta)[0]
             logging.debug('beta id {} beta {}'.format(beta_id, beta))
@@ -251,44 +259,47 @@ class GossipAgent:
             logging.debug('agent {} peer beta {}'.format(self.id, beta))
             logging.debug(f'agent {self.id} local_auc {self.local_auc:.5f} my_other_acc {self.my_other_acc:.5f} r_feedback(self) {self.calculate_rpeer():.5f} r_feedback(other) {self.other_rpeer:.5f}')
 
-            # Update actor
-            for _ in range(5):
-                action = self.beta_policy(
-                            self.local_auc, # Acc(self.model, self.dataset)
-                            self.peer_acc,
-                            self.calculate_rpeer(), # r_feedback(self)
-                            self.other_rpeer, # r_feedback(other)
-                            device=self.device)
-                beta_loss = -self.beta_critic.actor_forward(
-                        self.local_auc, # Acc(self.model, self.dataset)
-                        self.peer_acc, # Acc(self.model, other.dataset)
-                        self.calculate_rpeer(), # r_feedback(self)
-                        self.other_rpeer, # r_feedback(other)
-                        action, # action is beta with gradient
-                        device=self.device) 
-                logging.debug('agent {} beta action {} beta loss {:.5f}'.format(self.id, action, beta_loss.item()))
-                self.beta_policy_optimizer.zero_grad()
-                beta_loss.backward()
-                self.beta_policy_optimizer.step()
+            def _concat_ob(obs):
+                # X, y
+                return torch.concat([torch.tensor(ob) for ob, _ in obs]).float().to(self.device), obs[-1][1]
 
-            # Update critic
-            self.buffer.append(((self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer, beta), reward))
-            for _ in range(5):
-                batch_size = 32
-                batch = random.sample(self.buffer, k=min(len(self.buffer), batch_size))
-                batch_x = torch.stack([torch.tensor(b[0]) for b in batch]).float()
+            def _sample_obs(sample_size):
+                batch_idx = np.random.choice(len(self.buffer)-self.ob_history+1, size=min(len(self.buffer)-self.ob_history+1, sample_size), replace=False)
+                batch = [_concat_ob(self.buffer[idx:idx+self.ob_history]) for idx in batch_idx]
+                batch_x = torch.stack([b[0] for b in batch]).float()
                 batch_y = torch.tensor([b[1] for b in batch]).float().to(self.device)
 
-                reward_pred = self.beta_critic(batch_x, device=self.device).flatten()
-                beta_critic_loss = F.mse_loss(reward_pred, batch_y)
-                logging.debug('agent {} critic loss {:.5f}'.format(self.id, beta_critic_loss.item()))
-                self.beta_critic_optimizer.zero_grad()
-                beta_critic_loss.backward()
-                self.beta_critic_optimizer.step()
+                return batch_x, batch_y
+
+            # Update actor
+            if len(self.buffer) >= self.ob_history:
+                for _ in range(5):
+                    batch_size = 8
+                    batch_x, batch_y = _sample_obs(batch_size)
+                    action = self.beta_policy(batch_x[:, :-1])
+                    beta_loss = -self.beta_critic.actor_forward(batch_x[:, :-1], action).mean()
+
+                    logging.debug('agent {} beta action {} beta loss {:.5f}'.format(self.id, action[-1].item(), beta_loss.item()))
+                    self.beta_policy_optimizer.zero_grad()
+                    beta_loss.backward()
+                    self.beta_policy_optimizer.step()
+
+            # Update critic
+            if len(self.buffer) >= self.ob_history:
+                for _ in range(5):
+                    batch_size = 16
+                    batch_x, batch_y = _sample_obs(batch_size)
+
+                    reward_pred = self.beta_critic(batch_x).flatten()
+                    beta_critic_loss = F.mse_loss(reward_pred, batch_y)
+                    logging.debug('agent {} critic loss {:.5f}'.format(self.id, beta_critic_loss.item()))
+                    self.beta_critic_optimizer.zero_grad()
+                    beta_critic_loss.backward()
+                    self.beta_critic_optimizer.step()
 
             # log data
             if FLAGS.wandb:
-                wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta.item(),
+                wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
                            f'comm_loss/beta_loss-{self.id}-{self.peer_id}': beta_loss.item(),
                            f'comm_loss/beta_critic_loss-{self.id}-{self.peer_id}': beta_critic_loss.item(),
                            f'comm_r/reward_{self.id}': reward}, commit=False)
