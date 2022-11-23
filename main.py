@@ -34,11 +34,11 @@ def setup():
             env_mode=FLAGS.env_mode,
             grid_h=FLAGS.env_grid_h,
             grid_w=FLAGS.env_grid_w,
-            cheat=FLAGS.cheat
+            oracle=FLAGS.oracle
         )
         name = FLAGS.agent_info_mode + '_' + FLAGS.beta_net + '_' + FLAGS.comment
-        if FLAGS.cheat:
-            name += '_cheat'
+        if FLAGS.oracle:
+            name += '_oracle'
         job = str(FLAGS.num_agents) + '_agents'
         wandb.init(project='Gossip Learning', entity='gossips', group='grid_not_move', job_type=job, name=name,
                    config=config)
@@ -78,7 +78,7 @@ def main(argv):
         local_step_freq = FLAGS.local_step_freq,
         n_train_img     = FLAGS.n_train_img,
         device          = device,
-        cheat_data      = full_test
+        oracle_data      = full_test
     )
 
     # Dictionary to store performance at each step

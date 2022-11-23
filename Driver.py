@@ -17,7 +17,7 @@ flags.DEFINE_bool('combine_grad', False, help='')
 
 
 class Driver:
-    def __init__(self, num_agents, agent_info_mode, local_step_freq, n_train_img, device, cheat_data=None):
+    def __init__(self, num_agents, agent_info_mode, local_step_freq, n_train_img, device, oracle_data=None):
         # Hyperparameters
         self.local_step_freq = local_step_freq  # number of local steps between each peer step.
 
@@ -48,7 +48,7 @@ class Driver:
                 combine_grad=FLAGS.combine_grad,
                 device=device,
                 dummy=agentConfig.dummy[i],
-                cheat_data=cheat_data
+                oracle_data=oracle_data
             )
             logging.debug('Driver: agents {} created'.format(i))
 

@@ -6,6 +6,8 @@ import wandb
 from torch.utils.data import DataLoader
 from absl import logging, flags
 from tqdm import tqdm
+import pickle as pk
+import csv
 
 from policy import LinearCritic, LinearPolicy
 from models import MnistMlp
@@ -13,11 +15,11 @@ from sklearn import metrics
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string('beta_net', 'classify', help='')
-flags.DEFINE_bool('cheat', True, help='')
+flags.DEFINE_bool('oracle', True, help='')
 
 class GossipAgent:
     def __init__(self, aid, dataset, alpha=.5, sigma=.8, beta_num=11,
-                 coord=[0,0], lr=1e-3, combine_grad=False, device='cpu', dummy=False, cheat_data=None):
+                 coord=[0,0], lr=1e-3, combine_grad=False, device='cpu', dummy=False, oracle_data=None):
         # Agent metadata and hyper-parameters
         self.id = aid
         self.alpha = alpha
@@ -35,10 +37,10 @@ class GossipAgent:
         
         self.device = device
 
-        self.cheat_data = cheat_data
-        self.cheat_dataloader = None
-        if cheat_data is not None:
-            self.cheat_dataloader = DataLoader(cheat_data, batch_size=64, shuffle=True)
+        self.oracle_data = oracle_data
+        self.oracle_dataloader = None
+        if oracle_data is not None:
+            self.oracle_dataloader = DataLoader(oracle_data, batch_size=64, shuffle=True)
 
         # Import agent model, both for prediction and beta policy
         if FLAGS.beta_net == 'classify':
@@ -56,6 +58,9 @@ class GossipAgent:
             def _f(*args, **kwargs):
                 return float(FLAGS.beta_net.strip('fix-'))
             self.beta_policy = _f
+        elif FLAGS.beta_net.startswith('pretrain-'):
+            with open(FLAGS.beta_net.strip('pretrain-')+".pkl",'rb') as fp:
+                self.beta_policy = pk.load(fp)
         else:
             raise Exception(FLAGS.beta_net)
 
@@ -86,7 +91,7 @@ class GossipAgent:
             torch.save(self.beta_policy.state_dict(), self.beta_fp + "episode_{}.pt".format(eps))
         elif FLAGS.beta_net == 'ddpg':
             torch.save(self.beta_policy.state_dict(), self.beta_fp + "episode_{}.pt".format(eps))
-            torch.save(self.beta_critic.state_dict(), self.beta_critic_fp + "eposide_{}.pt".format(eps))
+            torch.save(self.beta_critic.state_dict(), self.beta_critic_fp + "episode_{}.pt".format(eps))
         torch.save(self.model.state_dict(), self.model_fp + "episode_{}.pt".format(eps))
 
     def calculate_total_reward(self):
@@ -185,6 +190,16 @@ class GossipAgent:
         if not other.dumb:
             other.stage5_helper(round)
 
+    def eval_beta(self,beta):
+        state = self.model.state_dict()
+        peer_state = self.peer_model.state_dict()
+        for layer in state:
+            state[layer] = state[layer] * beta + peer_state[layer] * (1 - beta)
+        composite_model = MnistMlp() # TODO is this right?
+        composite_model.load_state_dict(state)
+        # Compute and return AUC on oracle dataset
+        return self.evaluate(composite_model, self.oracle_dataloader)
+
     def stage5_helper(self, round):
         """Given results of first 4 stages, update local model"""
         # Evaluate on local data
@@ -199,8 +214,6 @@ class GossipAgent:
                 x = torch.concat([x, torch.tensor((self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))]).float().to(self.device)
             else:
                 x = torch.concat([torch.tensor((self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))]).float().to(self.device)
-
-
             action = self.beta_policy(x)
 
         if FLAGS.beta_net == 'classify':
@@ -208,6 +221,17 @@ class GossipAgent:
         elif FLAGS.beta_net == 'ddpg':
             beta = action.item()
             # beta = torch.tensor(1, device=self.device).float()
+        elif FLAGS.beta_net.startswith('cheat-'):
+            assert self.oracle == True, "Need '--oracle True' to cheat"
+            step = float(FLAGS.beta_net.strip('cheat-'))
+            beta = max(range(0,1+step,step),key=lambda b: self.eval_beta(b))
+            # TODO Append state, beta onto "data.csv" for future regression
+            with open('data.pkl','rwb') as fp:
+                data = pk.load(fp)
+                data.append(state + [beta])
+                pk.dump(fp)
+        elif FLAGS.beta_net.startswith('pretrain-'):
+            beta = self.beta_policy.predict(state) # TODO test to make sure this is correct
         else:
             beta = action
 
@@ -237,8 +261,8 @@ class GossipAgent:
 
         '''Update beta network'''
         # train beta using self.calculate_total_reward()
-        if FLAGS.cheat:
-            reward = self.evaluate(self.model, self.cheat_dataloader)[0]
+        if FLAGS.oracle:
+            reward = self.evaluate(self.model, self.oracle_dataloader)[0]
         else:
             reward = self.alpha * self.local_auc + (1 - self.alpha) * self.calculate_rpeer()
         assert 0 <= reward <= 1
@@ -306,7 +330,7 @@ class GossipAgent:
                 wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
                            f'comm_loss/beta_loss-{self.id}-{self.peer_id}': beta_loss.item(),
                            f'comm_loss/beta_critic_loss-{self.id}-{self.peer_id}': beta_critic_loss.item(),
-                           f'comm_r/reward_{self.id}': reward}, commit=False)
+                           f'comm_r/reward_{self.id}': reward}, commit=False)    
         else:
             # log data
             if FLAGS.wandb:
