@@ -24,7 +24,7 @@ class GossipAgent:
         self.sigma = sigma
         self.dumb = dummy
 
-        self.ob_history = 5
+        self.ob_history = 1
 
         # TODO: Load test data as well
         self.dataset = dataset
@@ -194,8 +194,12 @@ class GossipAgent:
         if len(self.buffer) < self.ob_history-1:
             action = torch.rand(1).squeeze(0) / 10
         else:
-            x = torch.concat([torch.tensor(ob) for ob, _ in self.buffer[-self.ob_history+1:]])
-            x = torch.concat([x, torch.tensor((self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))]).float().to(self.device)
+            if self.ob_history > 1:
+                x = torch.concat([torch.tensor(ob) for ob, _ in self.buffer[-self.ob_history+1:]])
+                x = torch.concat([x, torch.tensor((self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))]).float().to(self.device)
+            else:
+                x = torch.concat([torch.tensor((self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))]).float().to(self.device)
+
 
             action = self.beta_policy(x)
 
