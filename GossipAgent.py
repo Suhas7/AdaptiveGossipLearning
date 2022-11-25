@@ -226,10 +226,9 @@ class GossipAgent:
             step = float(FLAGS.beta_net.strip('cheat-'))
             beta = max(range(0,1+step,step),key=lambda b: self.eval_beta(b))
             # TODO Append state, beta onto "data.csv" for future regression
-            with open('data.pkl','rwb') as fp:
-                data = pk.load(fp)
-                data.append(state + [beta])
-                pk.dump(fp)
+            with open('data.pkl','a') as fp:
+                state = [self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer]
+                fp.write((state + [beta]).join(",")+"\n")
         elif FLAGS.beta_net.startswith('pretrain-'):
             beta = self.beta_policy.predict(state) # TODO test to make sure this is correct
         else:
