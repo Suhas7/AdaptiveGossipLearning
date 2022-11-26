@@ -27,7 +27,7 @@ class AgentConfig:
 '''Create a distribution where N classes have topweight, the rest have baseweight'''
 def _gen_nclass(N, baseweight, topweight):
     if N == 0:
-        return np.ones(FLAGS.num_class)
+        return np.ones(FLAGS.num_class) / FLAGS.num_class
     assert topweight >= baseweight
     norm = N*topweight + (FLAGS.num_class-N)*baseweight
     w = np.ones(FLAGS.num_class)
@@ -112,6 +112,9 @@ def getAgentConfig(mode):
         a = max(min(1, FLAGS.num_agents - 1), 0)
         b = FLAGS.num_agents - a
         distr = np.array([[a, 0, 1, 5], [b, int(10 / FLAGS.num_agents) + 1, 1, 15]])
+        return gen_distribution(distr)
+    elif mode == 'cheat-1':
+        distr = np.array([[FLAGS.num_agents, 4, 1, 13]])
         return gen_distribution(distr)
     elif mode == '1dumb-extreme-1':
         dumb_cnt = max(min(1, FLAGS.num_agents-1), 0)

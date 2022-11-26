@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import random
 import torch
@@ -27,6 +29,7 @@ class GossipAgent:
         self.dumb = dummy
 
         self.ob_history = 1
+        self.buffer = []
 
         # TODO: Load test data as well
         self.dataset = dataset
@@ -53,12 +56,14 @@ class GossipAgent:
             self.beta_critic = LinearCritic(5*self.ob_history, 1).to(device)
             self.beta_policy_optimizer = torch.optim.Adam(self.beta_policy.parameters(), lr=lr)
             self.beta_critic_optimizer = torch.optim.Adam(self.beta_critic.parameters(), lr=lr)
-            self.buffer = []
         elif FLAGS.beta_net.startswith('fix-'):
             def _f(*args, **kwargs):
                 return float(FLAGS.beta_net.strip('fix-'))
             self.beta_policy = _f
-        elif FLAGS.beta_net.startswith('cheat-'): pass
+        elif FLAGS.beta_net.startswith('cheat-'):
+            def _f(*args, **kwargs):
+                return 0
+            self.beta_policy = _f
         elif FLAGS.beta_net.startswith('pretrain-'):
             with open(FLAGS.beta_net.strip('pretrain-')+".pkl",'rb') as fp:
                 self.beta_policy = pk.load(fp)
@@ -75,6 +80,9 @@ class GossipAgent:
             self.beta_critic_fp = "./beta-critic/agent_{}/".format(aid)
         self.model_fp = "./models/agent_{}/".format(aid)
         self.log_fp = "./logs/agent_{}/".format(aid)
+        if aid == 0:
+            with open(FLAGS.logdir + '/data.csv', 'w') as fp:
+                fp.write("id, local auc, peer auc, r peer, other r peer, beta\n")
 
         # Allocate reward structures
         self.local_auc = 0
@@ -191,7 +199,7 @@ class GossipAgent:
         if not other.dumb:
             other.stage5_helper(round)
 
-    def eval_beta(self,beta):
+    def eval_beta(self, beta):
         state = self.model.state_dict()
         peer_state = self.peer_model.state_dict()
         for layer in state:
@@ -223,13 +231,16 @@ class GossipAgent:
             beta = action.item()
             # beta = torch.tensor(1, device=self.device).float()
         elif FLAGS.beta_net.startswith('cheat-'):
-            assert self.oracle == True, "Need '--oracle True' to cheat"
+            assert FLAGS.oracle, "Need '--oracle True' to cheat"
             step = float(FLAGS.beta_net.strip('cheat-'))
-            beta = max(range(0,1+step,step),key=lambda b: self.eval_beta(b))
+            n = math.floor(1 / step) + 1
+            candidate = np.arange(n) * step
+            beta = max(candidate, key=lambda b: self.eval_beta(b))
             # TODO Append state, beta onto "data.csv" for future regression
-            with open('data.pkl','a') as fp:
-                state = [self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer]
-                fp.write((state + [beta]).join(",")+"\n")
+            with open(FLAGS.logdir + '/data.csv', 'a') as fp:
+                state = [self.id, self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer, beta]
+                s = ",".join(map(str, state)) + "\n"
+                fp.write(s)
         elif FLAGS.beta_net.startswith('pretrain-'):
             beta = self.beta_policy.predict(state) # TODO test to make sure this is correct
         else:
