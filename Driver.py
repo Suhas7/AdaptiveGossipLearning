@@ -48,7 +48,8 @@ class Driver:
                 combine_grad=FLAGS.combine_grad,
                 device=device,
                 dummy=agentConfig.dummy[i],
-                oracle_data=oracle_data
+                oracle_data=oracle_data,
+                dist=agentConfig.dists[i]
             )
             logging.debug('Driver: agents {} created'.format(i))
 
@@ -95,7 +96,7 @@ class Driver:
         # todo make this async friendly
         agentA.stage1_comm_model(agentB)
         agentA.stage2_eval_peer(agentB)
-        agentA.stage3_comm_accs(agentB)
+        agentA.stage3_comm_aucs(agentB)
         agentA.stage4_comm_rpeer(agentB)
         agentA.stage5_local_updates(agentB, self.episode_count)
     # agentA.save_models(self.episode_count)
