@@ -58,6 +58,7 @@ class GossipAgent:
             def _f(*args, **kwargs):
                 return float(FLAGS.beta_net.strip('fix-'))
             self.beta_policy = _f
+        elif FLAGS.beta_net.startswith('cheat-'): pass
         elif FLAGS.beta_net.startswith('pretrain-'):
             with open(FLAGS.beta_net.strip('pretrain-')+".pkl",'rb') as fp:
                 self.beta_policy = pk.load(fp)
