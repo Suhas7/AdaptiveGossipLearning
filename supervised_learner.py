@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+import pickle as pkl
 
 class SLBetaModel:
 	def __init__(self, model):
@@ -31,7 +32,7 @@ print('test mse', mean_squared_error(test_y, pred_y))
 print('test mae', mean_absolute_error(test_y, pred_y))
 
 with open("sl_beta_linear_reg.pkl",'wb') as fp:
-	pk.dump(SLBetaModel(model),fp)
+	pkl.dump(SLBetaModel(model),fp)
 
 # log-odds-ratio
 print('log-odd-ratio')
@@ -46,4 +47,4 @@ print('test mse', mean_squared_error(test_y, pred_y))
 print('test mae', mean_absolute_error(test_y, pred_y))
 
 with open("sl_beta_log_odd_ratio_linear_reg.pkl",'wb') as fp:
-	pk.dump(SLBetaModel(model),fp)
+	pkl.dump(SLBetaModel(model),fp)
