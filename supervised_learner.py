@@ -15,7 +15,7 @@ class SLBetaModel:
 	    return ex / (1 + ex)
 
 df = pd.read_csv('data.csv')
-X, y = df.iloc[:, 1:5].to_numpy(), df.iloc[:, 5].to_numpy()
+X, y = df.iloc[:, 1:31].to_numpy(), df.iloc[:, 31].to_numpy()
 y = np.clip(y, 1e-8, 1-1e-8)
 train_X, test_X, train_y, test_y = train_test_split(X, y, train_size=0.75)
 
