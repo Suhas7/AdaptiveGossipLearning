@@ -1,14 +1,15 @@
 import os.path
 import random
-
 import torch.random
 import wandb
 from absl import app, flags, logging
-from Driver import Driver
-from data_distribution import fetch_mnist_data
 import matplotlib.pyplot as plt
 import numpy as np
 from torch.utils.data import DataLoader
+
+from Driver import Driver
+from data_distribution import fetch_mnist_data
+from supervised_learner import SLBetaModel
 
 logging.set_verbosity(logging.DEBUG)
 
