@@ -49,7 +49,8 @@ class Driver:
                 device=device,
                 dummy=agentConfig.dummy[i],
                 oracle_data=oracle_data,
-                dist=agentConfig.dists[i]
+                dist=agentConfig.dists[i],
+                local_step_freq=local_step_freq
             )
             logging.debug('Driver: agents {} created'.format(i))
 

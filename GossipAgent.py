@@ -1,7 +1,6 @@
 import math
 
 import numpy as np
-import random
 import torch
 import torch.nn.functional as F
 import wandb
@@ -9,7 +8,6 @@ from torch.utils.data import DataLoader
 from absl import logging, flags
 from tqdm import tqdm
 import pickle as pk
-import csv
 
 from policy import LinearCritic, LinearPolicy
 from models import MnistMlp
@@ -31,13 +29,17 @@ scope: self
 
 class GossipAgent:
     def __init__(self, aid, dataset, alpha=.5, sigma=.8, beta_num=11,
-                 coord=[0,0], lr=1e-3, combine_grad=False, device='cpu', dummy=False, oracle_data=None,dist=None):
+                 coord=[0,0], lr=1e-3, combine_grad=False, device='cpu', dummy=False, oracle_data=None,
+                 dist=None, local_step_freq=1):
         # Agent metadata and hyper-parameters
         self.id = aid
         self.alpha = alpha
         self.sigma = sigma
         self.dist = dist
         self.dumb = dummy
+        self.local_step_freq = local_step_freq
+        self.beta_lr = lr
+        self.classifier_lr = 1e-2
 
         self.ob_history = 1
         self.buffer = []
@@ -82,7 +84,7 @@ class GossipAgent:
             raise Exception(FLAGS.beta_net)
 
         self.model = MnistMlp().to(device)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.classifier_lr)
         self.peer_model = MnistMlp().to(device)
 
         # Model & Log Outputs
@@ -93,9 +95,11 @@ class GossipAgent:
         self.log_fp = "./logs/agent_{}/".format(aid)
         if aid == 0:
             with open(FLAGS.logdir + '/data.csv', 'w') as fp:
-                fp.write("id, local auc, peer auc, r peer, other r peer, beta\n")
+                fp.write("")
             with open(FLAGS.logdir + '/eval_beta.csv', 'w') as fd:
                 fd.write("")
+            with open(FLAGS.logdir + '/auc.csv', 'w') as fd:
+                fd.write("id, peer id, current auc, best auc, best beta")
 
         # Allocate reward structures
         self.MAMD = 0
@@ -158,29 +162,34 @@ class GossipAgent:
 
             labels = torch.cat(labels)
             preds = torch.argmax(torch.cat(preds), dim=1)
-            auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(), \
-                                    average = None if vector else 'macro')
+            auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(),
+                                   average = None if vector else 'macro')
 
             if model is self.model:
                 self.MAMD_history.append(auc)
 
         return auc, loss
 
-    def local_step(self, steps=1):
+    def local_step(self, steps=1, model=None):
         # Train `steps` local step on the model
         total_loss = 0
+        if model is None:
+            model = self.model
+            optim = self.optimizer
+        else:
+            optim = torch.optim.Adam(model.parameters(), lr=self.classifier_lr)
         if not self.dumb:
-            self.model.train()
+            model.train()
             for i, (data, label) in tqdm(enumerate(self.dataloader), total=steps, desc=f"{self.id} Training", leave=False):
                 if i >= steps:
                     break
-                pred = self.model(data.to(self.device))
+                pred = model(data.to(self.device))
                 loss = torch.nn.functional.cross_entropy(pred, label.to(self.device))
                 total_loss += loss.item()
 
-                self.optimizer.zero_grad()
+                optim.zero_grad()
                 loss.backward()
-                self.optimizer.step()
+                optim.step()
         return total_loss / steps
 
     def update_YAMDs(self, oid, pacc):
@@ -238,8 +247,10 @@ class GossipAgent:
         peer_state = self.peer_model.state_dict()
         for layer in state:
             state[layer] = state[layer] * beta + peer_state[layer] * (1 - beta)
-        composite_model = MnistMlp().to(self.device)  # TODO is this right?
+        composite_model = MnistMlp().to(self.device)
         composite_model.load_state_dict(state)
+        # Take a local step with the composite model
+        self.local_step(self.local_step_freq, model=composite_model)
         # Compute and return AUC on oracle dataset
         return self.evaluate(composite_model, self.oracle_dataloader)[0]
 
@@ -278,14 +289,13 @@ class GossipAgent:
             candidate = np.arange(n) * step
             look_ahead = list(map(self.eval_beta, candidate.tolist()))
             beta = candidate[np.argmax(look_ahead)]
+
             # test
             current_auc = look_ahead[-1]
             best_auc = max(look_ahead)
-            best_beta = np.argmax(look_ahead)
-            with open(FLAGS.logdir + '/current_auc.csv', 'a') as fd:
-                s = [self.id, current_auc, best_auc, best_beta]
+            with open(FLAGS.logdir + '/auc.csv', 'a') as fd:
+                s = [self.id, self.peer_id, current_auc, best_auc, beta]
                 fd.write(",".join(map(str, s)) + "\n")
-
             with open(FLAGS.logdir + '/eval_beta.csv', 'a') as fd:
                 look_ahead.insert(0, self.peer_id)
                 look_ahead.insert(0, self.id)
