@@ -18,14 +18,25 @@ from sklearn import metrics
 FLAGS = flags.FLAGS
 flags.DEFINE_string('beta_net', 'classify', help='')
 flags.DEFINE_bool('oracle', True, help='')
+flags.DEFINE_bool('vector_rp', False, help='')
+
+'''
+scope: self
+    local_auc: my auc on my data       ->  MAMD
+    peer_auc: peer's auc on my data    ->  YAMD
+    other_auc: peer auc on their data ->  YAYD
+    my_other_auc: my auc on their data ->  MAYD
+'''
+
 
 class GossipAgent:
     def __init__(self, aid, dataset, alpha=.5, sigma=.8, beta_num=11,
-                 coord=[0,0], lr=1e-3, combine_grad=False, device='cpu', dummy=False, oracle_data=None):
+                 coord=[0,0], lr=1e-3, combine_grad=False, device='cpu', dummy=False, oracle_data=None,dist=None):
         # Agent metadata and hyper-parameters
         self.id = aid
         self.alpha = alpha
         self.sigma = sigma
+        self.dist = dist
         self.dumb = dummy
 
         self.ob_history = 1
@@ -85,14 +96,14 @@ class GossipAgent:
                 fp.write("id, local auc, peer auc, r peer, other r peer, beta\n")
 
         # Allocate reward structures
-        self.local_auc = 0
+        self.MAMD = 0
         self.loss = 0
         self.peer_loss = 0
-        self.peer_accs = dict()
+        self.YAMDs = dict()
         self.peer_ages = dict()
         self.peer_idmap = dict()
         self.combine_grad = combine_grad
-        self.local_auc_history = []
+        self.MAMD_history = []
         self.peer_id = None
 
     def save_models(self, eps):
@@ -104,20 +115,34 @@ class GossipAgent:
         torch.save(self.model.state_dict(), self.model_fp + "episode_{}.pt".format(eps))
 
     def calculate_total_reward(self):
-        return self.local_auc + self.calculate_rpeer()
+        return self.MAMD + self.calculate_rpeer()
 
     def calculate_rpeer(self):
         result = 0
         denom = 0
-        for key in self.peer_accs.keys():
+        for key in self.YAMDs.keys():
             scale = (self.sigma ** self.peer_ages[key])
             denom += scale
-            result += self.peer_accs[key]*scale
+            result += self.YAMDs[key]*scale
         if denom == 0:
-            return 0
+            if not FLAGS.vector_rp:
+                return 0
         return result / denom
 
-    def evaluate(self, model, dataloader):
+    def calculate_rpeer_vec(self):
+        result = 0
+        denom = 0
+        for key in self.YAMDs.keys():
+            scale = (self.sigma ** self.peer_ages[key])
+            denom += scale
+            result += self.YAMDs[key]*scale
+        if denom == 0:
+            if not FLAGS.vector_rp:
+                return 0
+        return result / denom
+
+
+    def evaluate(self, model, dataloader, vector=False):
         # TODO: add option to sample from dataset to evaluate model
         model.eval()
         loss = 0
@@ -132,10 +157,11 @@ class GossipAgent:
 
             labels = torch.cat(labels)
             preds = torch.argmax(torch.cat(preds), dim=1)
-            auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(), average='macro')
+            auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(), \
+                                    average = None if vector else 'macro')
 
             if model is self.model:
-                self.local_auc_history.append(auc)
+                self.MAMD_history.append(auc)
 
         return auc, loss
 
@@ -156,15 +182,22 @@ class GossipAgent:
                 self.optimizer.step()
         return total_loss / steps
 
-    def update_peer_accs(self, oid, pacc):
-        # Update peer_accs
+    def update_YAMDs(self, oid, pacc):
+        # Update YAMDs
         for pid in self.peer_ages.keys():
             self.peer_ages[pid] += 1
-        self.peer_accs[oid] = pacc
+        self.YAMDs[oid] = pacc
         self.peer_ages[oid] = 0
 
     def stage1_comm_model(self, other):
         # logging.debug('stage 1')
+        # Evaluate yourself
+        self.MAMD, self.loss = self.evaluate(self.model, self.dataloader)
+        other.MAMD, other.loss = other.evaluate(other.model, other.dataloader)
+        self.YAYD = other.MAMD
+        other.YAYD = self.MAMD
+        self.other_dist = other.dist
+        other.other_dist = self.dist
         # Transmit and receive models to start interaction
         # Make a copy of the other's model
         self.peer_model.load_state_dict(other.model.state_dict())
@@ -175,16 +208,16 @@ class GossipAgent:
     def stage2_eval_peer(self, other):
         # logging.debug('stage 2')
         # Evaluate peer model locally (to compute accuracy & gradient)
-        self.peer_acc, self.peer_loss = self.evaluate(self.peer_model, self.dataloader)
-        other.peer_acc, other.peer_loss = other.evaluate(other.peer_model, other.dataloader)
+        self.YAMD, self.peer_loss = self.evaluate(self.peer_model, self.dataloader,      vector=FLAGS.vector_rp)
+        other.YAMD, other.peer_loss = other.evaluate(other.peer_model, other.dataloader, vector=FLAGS.vector_rp)
 
-    def stage3_comm_accs(self, other):
+    def stage3_comm_aucs(self, other):
         # logging.debug('stage 3')
         # Transmit and receive model accuracies
-        self.my_other_acc = other.peer_acc
-        other.my_other_acc = self.peer_acc
-        self.update_peer_accs(other.id, self.my_other_acc)
-        other.update_peer_accs(self.id, other.my_other_acc)
+        self.MAYD = other.YAMD
+        other.MAYD = self.YAMD
+        self.update_YAMDs(other.id, self.MAYD)
+        other.update_YAMDs(self.id, other.MAYD)
 
     def stage4_comm_rpeer(self, other):
         # logging.debug('stage 4')
@@ -209,20 +242,27 @@ class GossipAgent:
         # Compute and return AUC on oracle dataset
         return self.evaluate(composite_model, self.oracle_dataloader)
 
+    def get_state(self):
+        if not FLAGS.vector_rp:
+            return [self.id, self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer]
+        else:
+            #Vector state is: concat(my_auc_on_my_data - your_auc_on_my_data, \
+             #my_auc_on_your_data - your_auc_on_your_data, my_dist-your_dist)
+            return [self.id] + list(self.MAMD - self.YAMD) + \
+                               list(self.YAYD - self.MAYD) +\
+                               list(self.dist-self.other_dist)
+
     def stage5_helper(self, round):
         """Given results of first 4 stages, update local model"""
-        # Evaluate on local data
-        self.local_auc, self.loss = self.evaluate(self.model, self.dataloader)
-
         # Calculate beta value
         if len(self.buffer) < self.ob_history-1:
             action = torch.rand(1).squeeze(0) / 10
-        else:
+        elif not FLAGS.vector_rp:
             if self.ob_history > 1:
                 x = torch.concat([torch.tensor(ob) for ob, _ in self.buffer[-self.ob_history+1:]])
-                x = torch.concat([x, torch.tensor((self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))]).float().to(self.device)
+                x = torch.concat([x, torch.tensor((self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer))]).float().to(self.device)
             else:
-                x = torch.concat([torch.tensor((self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))]).float().to(self.device)
+                x = torch.concat([torch.tensor((self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer))]).float().to(self.device)
             action = self.beta_policy(x)
 
         if FLAGS.beta_net == 'classify':
@@ -236,9 +276,10 @@ class GossipAgent:
             n = math.floor(1 / step) + 1
             candidate = np.arange(n) * step
             beta = max(candidate, key=lambda b: self.eval_beta(b))
-            # TODO Append state, beta onto "data.csv" for future regression
+            # Append state, beta onto "data.csv" for future regression
             with open(FLAGS.logdir + '/data.csv', 'a') as fp:
-                state = [self.id, self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer, beta]
+                state = self.get_state()
+                state.append(beta)
                 s = ",".join(map(str, state)) + "\n"
                 fp.write(s)
         elif FLAGS.beta_net.startswith('pretrain-'):
@@ -275,10 +316,10 @@ class GossipAgent:
         if FLAGS.oracle:
             reward = self.evaluate(self.model, self.oracle_dataloader)[0]
         else:
-            reward = self.alpha * self.local_auc + (1 - self.alpha) * self.calculate_rpeer()
+            reward = self.alpha * self.MAMD + (1 - self.alpha) * self.calculate_rpeer()
         assert 0 <= reward <= 1
 
-        self.buffer.append(((self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer, beta), reward))
+        self.buffer.append(((self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer, beta), reward))
 
         if FLAGS.beta_net == 'classify':
             beta_id = np.where(self.beta_action == beta)[0]
@@ -296,7 +337,7 @@ class GossipAgent:
                            f'comm_r/reward_{self.id}': reward}, commit=False)
         elif FLAGS.beta_net == 'ddpg':
             logging.debug('agent {} peer beta {}'.format(self.id, beta))
-            logging.debug(f'agent {self.id} local_auc {self.local_auc:.5f} my_other_acc {self.my_other_acc:.5f} r_feedback(self) {self.calculate_rpeer():.5f} r_feedback(other) {self.other_rpeer:.5f}')
+            logging.debug(f'agent {self.id} MAMD {self.MAMD:.5f} MAYD {self.MAYD:.5f} r_feedback(self) {self.calculate_rpeer():.5f} r_feedback(other) {self.other_rpeer:.5f}')
 
             def _concat_ob(obs):
                 # X, y
@@ -346,7 +387,7 @@ class GossipAgent:
             # log data
             if FLAGS.wandb:
                 logging.debug('agent {} peer beta {}'.format(self.id, beta))
-                logging.debug('{} {} {} {}'.format(self.local_auc, self.peer_acc, self.calculate_rpeer(), self.other_rpeer))
+                logging.debug('{} {} {} {}'.format(self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer))
                 if FLAGS.wandb:
                     wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
                                f'comm_r/reward_{self.id}': reward}, commit=False)
