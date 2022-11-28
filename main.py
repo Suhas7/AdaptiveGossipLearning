@@ -1,14 +1,15 @@
 import os.path
 import random
-
 import torch.random
 import wandb
 from absl import app, flags, logging
-from Driver import Driver
-from data_distribution import fetch_mnist_data
 import matplotlib.pyplot as plt
 import numpy as np
 from torch.utils.data import DataLoader
+
+from Driver import Driver
+from data_distribution import fetch_mnist_data
+from supervised_learner import SLBetaModel
 
 logging.set_verbosity(logging.DEBUG)
 
@@ -34,13 +35,16 @@ def setup():
             env_mode=FLAGS.env_mode,
             grid_h=FLAGS.env_grid_h,
             grid_w=FLAGS.env_grid_w,
-            oracle=FLAGS.oracle
+            oracle=FLAGS.oracle,
+            vector=FLAGS.vector_rp
         )
-        name = FLAGS.agent_info_mode + '_' + FLAGS.beta_net + '_' + FLAGS.comment
-        if FLAGS.oracle:
-            name += '_oracle'
+        name = FLAGS.agent_info_mode + '_' + FLAGS.beta_net
+        if FLAGS.vector_rp:
+            name += '_v'
+        if len(FLAGS.comment) != 0:
+            name += '_' + FLAGS.comment
         job = str(FLAGS.num_agents) + '_agents'
-        wandb.init(project='Gossip Learning', entity='gossips', group='grid_not_move', job_type=job, name=name,
+        wandb.init(project='Gossip Learning', entity='gossips', group='no_move', job_type=job, name=name,
                    config=config)
         wandb.define_metric('round')
         wandb.define_metric('comm_loss/*', step_metric='round')
@@ -78,7 +82,7 @@ def main(argv):
         local_step_freq = FLAGS.local_step_freq,
         n_train_img     = FLAGS.n_train_img,
         device          = device,
-        oracle_data      = full_test
+        oracle_data     = full_test
     )
 
     # Dictionary to store performance at each step

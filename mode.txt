@@ -1,0 +1,22 @@
+
+# 11/27/2022
+
+## Summary of test modes
+
+[name: description (top class, low weight, top weight)]
+
+# All good agents
+
+1. good-1: all agents have balanced data, (10, 1, 1)
+
+2. good-2: all agents have slightly unbalanced data, (4, 1, 10)
+
+3. good-3: all agents have extremely unbalanced data, (4, 1, 50)
+
+# One dumb agent
+
+1. 1dumb-1: other agents have balanced data, (10, 1, 1)
+
+2. 1dumb-2: other agents have slightly unbalanced data, (4, 1, 10)
+
+3. 1dumb-3: other agents have extremely unbalanced data, (4, 1, 50)
