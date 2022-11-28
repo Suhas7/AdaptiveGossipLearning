@@ -18,7 +18,7 @@ from sklearn import metrics
 FLAGS = flags.FLAGS
 flags.DEFINE_string('beta_net', 'classify', help='')
 flags.DEFINE_bool('oracle', True, help='')
-flags.DEFINE_bool('vector_rp', False, help='')
+flags.DEFINE_bool('vector_rp', True, help='')
 
 '''
 scope: self
@@ -54,7 +54,7 @@ class GossipAgent:
         self.oracle_data = oracle_data
         self.oracle_dataloader = None
         if oracle_data is not None:
-            self.oracle_dataloader = DataLoader(oracle_data, batch_size=64, shuffle=True)
+            self.oracle_dataloader = DataLoader(oracle_data, batch_size=256, shuffle=False)
 
         # Import agent model, both for prediction and beta policy
         if FLAGS.beta_net == 'classify':
@@ -82,7 +82,7 @@ class GossipAgent:
             raise Exception(FLAGS.beta_net)
 
         self.model = MnistMlp().to(device)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2)
         self.peer_model = MnistMlp().to(device)
 
         # Model & Log Outputs
@@ -142,7 +142,6 @@ class GossipAgent:
             if not FLAGS.vector_rp:
                 return 0
         return result / denom
-
 
     def evaluate(self, model, dataloader, vector=False):
         # TODO: add option to sample from dataset to evaluate model
@@ -279,6 +278,14 @@ class GossipAgent:
             candidate = np.arange(n) * step
             look_ahead = list(map(self.eval_beta, candidate.tolist()))
             beta = candidate[np.argmax(look_ahead)]
+            # test
+            current_auc = look_ahead[-1]
+            best_auc = max(look_ahead)
+            best_beta = np.argmax(look_ahead)
+            with open(FLAGS.logdir + '/current_auc.csv', 'a') as fd:
+                s = [self.id, current_auc, best_auc, best_beta]
+                fd.write(",".join(map(str, s)) + "\n")
+
             with open(FLAGS.logdir + '/eval_beta.csv', 'a') as fd:
                 look_ahead.insert(0, self.peer_id)
                 look_ahead.insert(0, self.id)
