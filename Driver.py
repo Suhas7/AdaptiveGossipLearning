@@ -98,7 +98,7 @@ class Driver:
         agentA.stage2_eval_peer(agentB)
         agentA.stage3_comm_aucs(agentB)
         agentA.stage4_comm_rpeer(agentB)
-        agentA.stage5_local_updates(agentB, self.episode_count)
+        agentA.stage5_local_updates(agentB)
     # agentA.save_models(self.episode_count)
     # agentB.save_models(self.episode_count)
 

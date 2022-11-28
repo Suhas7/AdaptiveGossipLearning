@@ -18,13 +18,13 @@ from sklearn import metrics
 FLAGS = flags.FLAGS
 flags.DEFINE_string('beta_net', 'classify', help='')
 flags.DEFINE_bool('oracle', True, help='')
-flags.DEFINE_bool('vector_rp', False, help='')
+flags.DEFINE_bool('vector_rp', True, help='')
 
 '''
 scope: self
     local_auc: my auc on my data       ->  MAMD
     peer_auc: peer's auc on my data    ->  YAMD
-    other_auc: peer auc on their data ->  YAYD
+    other_auc: peer auc on their data  ->  YAYD
     my_other_auc: my auc on their data ->  MAYD
 '''
 
@@ -48,13 +48,13 @@ class GossipAgent:
 
         logging.info(f'agent {self.id} data size {len(dataset)}')
         logging.info(f'agent {self.id} step per epoch {len(self.dataloader)}')
-        
+
         self.device = device
 
         self.oracle_data = oracle_data
         self.oracle_dataloader = None
         if oracle_data is not None:
-            self.oracle_dataloader = DataLoader(oracle_data, batch_size=64, shuffle=True)
+            self.oracle_dataloader = DataLoader(oracle_data, batch_size=256, shuffle=False)
 
         # Import agent model, both for prediction and beta policy
         if FLAGS.beta_net == 'classify':
@@ -82,7 +82,7 @@ class GossipAgent:
             raise Exception(FLAGS.beta_net)
 
         self.model = MnistMlp().to(device)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2)
         self.peer_model = MnistMlp().to(device)
 
         # Model & Log Outputs
@@ -94,6 +94,8 @@ class GossipAgent:
         if aid == 0:
             with open(FLAGS.logdir + '/data.csv', 'w') as fp:
                 fp.write("id, local auc, peer auc, r peer, other r peer, beta\n")
+            with open(FLAGS.logdir + '/eval_beta.csv', 'w') as fd:
+                fd.write("")
 
         # Allocate reward structures
         self.MAMD = 0
@@ -140,7 +142,6 @@ class GossipAgent:
             if not FLAGS.vector_rp:
                 return 0
         return result / denom
-
 
     def evaluate(self, model, dataloader, vector=False):
         # TODO: add option to sample from dataset to evaluate model
@@ -225,22 +226,22 @@ class GossipAgent:
         self.other_rpeer = other.calculate_rpeer()
         other.other_rpeer = self.calculate_rpeer()
 
-    def stage5_local_updates(self, other, round):
+    def stage5_local_updates(self, other):
         logging.debug('stage 5')
         if not self.dumb:
-            self.stage5_helper(round)
+            self.stage5_helper()
         if not other.dumb:
-            other.stage5_helper(round)
+            other.stage5_helper()
 
     def eval_beta(self, beta):
         state = self.model.state_dict()
         peer_state = self.peer_model.state_dict()
         for layer in state:
             state[layer] = state[layer] * beta + peer_state[layer] * (1 - beta)
-        composite_model = MnistMlp() # TODO is this right?
+        composite_model = MnistMlp().to(self.device)  # TODO is this right?
         composite_model.load_state_dict(state)
         # Compute and return AUC on oracle dataset
-        return self.evaluate(composite_model, self.oracle_dataloader)
+        return self.evaluate(composite_model, self.oracle_dataloader)[0]
 
     def get_state(self):
         if not FLAGS.vector_rp:
@@ -275,7 +276,23 @@ class GossipAgent:
             step = float(FLAGS.beta_net.strip('cheat-'))
             n = math.floor(1 / step) + 1
             candidate = np.arange(n) * step
-            beta = max(candidate, key=lambda b: self.eval_beta(b))
+            look_ahead = list(map(self.eval_beta, candidate.tolist()))
+            beta = candidate[np.argmax(look_ahead)]
+            # test
+            current_auc = look_ahead[-1]
+            best_auc = max(look_ahead)
+            best_beta = np.argmax(look_ahead)
+            with open(FLAGS.logdir + '/current_auc.csv', 'a') as fd:
+                s = [self.id, current_auc, best_auc, best_beta]
+                fd.write(",".join(map(str, s)) + "\n")
+
+            with open(FLAGS.logdir + '/eval_beta.csv', 'a') as fd:
+                look_ahead.insert(0, self.peer_id)
+                look_ahead.insert(0, self.id)
+                s = ",".join(map(str, look_ahead)) + "\n"
+                fd.write(s)
+
+            # beta = max(candidate, key=lambda b: self.eval_beta(b))
             # Append state, beta onto "data.csv" for future regression
             with open(FLAGS.logdir + '/data.csv', 'a') as fp:
                 state = self.get_state()
@@ -283,7 +300,8 @@ class GossipAgent:
                 s = ",".join(map(str, state)) + "\n"
                 fp.write(s)
         elif FLAGS.beta_net.startswith('pretrain-'):
-            beta = self.beta_policy.predict(state) # TODO test to make sure this is correct
+            state = np.array(self.get_state())[1:].reshape(1, -1)
+            beta = self.beta_policy.predict(state)  # TODO test to make sure this is correct
         else:
             beta = action
 
@@ -382,7 +400,7 @@ class GossipAgent:
                 wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
                            f'comm_loss/beta_loss-{self.id}-{self.peer_id}': beta_loss.item(),
                            f'comm_loss/beta_critic_loss-{self.id}-{self.peer_id}': beta_critic_loss.item(),
-                           f'comm_r/reward_{self.id}': reward}, commit=False)    
+                           f'comm_r/reward_{self.id}': reward}, commit=False)
         else:
             # log data
             if FLAGS.wandb:

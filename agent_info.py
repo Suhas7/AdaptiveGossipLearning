@@ -76,46 +76,38 @@ def getAgentConfig(mode):
             start_coords=[(0, 0) for _ in range(FLAGS.num_agents)],
             dummy=[False for _ in range(FLAGS.num_agents)]
         )
-    elif mode == 'nclass':
-        distr = np.array([[FLAGS.num_agents, 5, 1, 4]])
+    # All good agents
+    elif mode == 'good-1':  # Balanced data
+        distr = np.array([[FLAGS.num_agents, 10, 1, 1]])
         return gen_distribution(distr)
-    elif mode == 'nclass-2':
-        distr = np.array([[FLAGS.num_agents, 3, 1, 5]])
+    elif mode == 'good-2':  # Unbalanced data
+        distr = np.array([[FLAGS.num_agents, 4, 1, 10]])
         return gen_distribution(distr)
-    elif mode == 'nclass-3':
-        distr = np.array([[FLAGS.num_agents, 3, 1, 10]])
+    elif mode == 'good-3':  # Unbalanced data
+        distr = np.array([[FLAGS.num_agents, 4, 1, 50]])
         return gen_distribution(distr)
-    elif mode == 'nclass-4':
-        distr = np.array([[FLAGS.num_agents, 3, 1, 15]])
+
+    # One dumb agent
+    elif mode == '1dumb-1':  # 1 dumb agent, other agents have balanced data
+        assert FLAGS.num_agents > 1, "mode 1dumb-1 requires more than 1 agents"
+        distr = np.array([[1, 0, 1, 1], [FLAGS.num_agents - 1, 10, 1, 1]])
         return gen_distribution(distr)
-    elif mode == 'nclass-5':
-        a = max(min(2, FLAGS.num_agents - 2), 0)
-        b = FLAGS.num_agents - a
-        distr = np.array([[a, 1, 1, 5], [b, 3, 1, 5]])
+    elif mode == '1dumb-2':  # 1 dumb agent, other agents have unbalanced data
+        assert FLAGS.num_agents > 1, "mode 1dumb-2 requires more than 1 agents"
+        distr = np.array([[1, 0, 1, 1], [FLAGS.num_agents - 1, 4, 1, 10]])
         return gen_distribution(distr)
-    elif mode == '1dumb-1':  # 1 dumb agent, other agent has data from 10 classes
-        a = max(min(1, FLAGS.num_agents - 1), 0)
-        b = FLAGS.num_agents - a
-        distr = np.array([[a, 0, 1, 5], [b, 10, 1, 5]])
+    elif mode == '1dumb-3':  # 1 dumb agent, other agents have unbalanced data
+        assert FLAGS.num_agents > 1, "mode 1dumb-3 requires more than 1 agents"
+        distr = np.array([[1, 0, 1, 1], [FLAGS.num_agents - 1, 4, 1, 50]])
         return gen_distribution(distr)
-    elif mode == '1dumb-2':  # 1 dumb agent, other agent has data from 5 classes
-        a = max(min(1, FLAGS.num_agents - 1), 0)
-        b = FLAGS.num_agents - a
-        distr = np.array([[a, 0, 1, 5], [b, 5, 1, 10]])
+
+    # Two dumb agents
+    elif mode == '2dumb-1':  # 2 dumb agent, other agents have balanced data
+        assert FLAGS.num_agents > 2, "mode 2dumb-1 requires more than 2 agents"
+        distr = np.array([[2, 0, 1, 1], [FLAGS.num_agents - 1, 10, 1, 1]])
         return gen_distribution(distr)
-    elif mode == '2dumb-1':  # 2 dumb agent, other agent has data from 10 classes
-        a = max(min(2, FLAGS.num_agents - 2), 0)
-        b = FLAGS.num_agents - a
-        distr = np.array([[a, 0, 1, 5], [b, 10, 1, 10]])
-        return gen_distribution(distr)
-    elif mode == 'dumb-3':
-        a = max(min(1, FLAGS.num_agents - 1), 0)
-        b = FLAGS.num_agents - a
-        distr = np.array([[a, 0, 1, 5], [b, int(10 / FLAGS.num_agents) + 1, 1, 15]])
-        return gen_distribution(distr)
-    elif mode == 'cheat-1':
-        distr = np.array([[FLAGS.num_agents, 4, 1, 13]])
-        return gen_distribution(distr)
+
+
     elif mode == '1dumb-extreme-1':
         dumb_cnt = max(min(1, FLAGS.num_agents-1), 0)
         smart_cnt = FLAGS.num_agents - dumb_cnt
