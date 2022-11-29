@@ -285,7 +285,8 @@ class GossipAgent:
             beta = action.item()
             # beta = torch.tensor(1, device=self.device).float()
         elif FLAGS.beta_net == 'heuristic':
-            beta = .5 + self.calculate_rpeer()-self.other_rpeer
+            beta = .5 + (1+self.calculate_rpeer()-self.other_rpeer)
+            beta = float(beta.mean())
         elif FLAGS.beta_net.startswith('cheat-'):
             assert FLAGS.oracle, "Need '--oracle True' to cheat"
             step = float(FLAGS.beta_net.strip('cheat-'))
