@@ -99,10 +99,6 @@ class GossipAgent:
         if aid == 0:
             with open(FLAGS.logdir + '/data.csv', 'w') as fp:
                 fp.write("")
-            with open(FLAGS.logdir + '/eval_beta.csv', 'w') as fd:
-                fd.write("")
-            with open(FLAGS.logdir + '/auc.csv', 'w') as fd:
-                fd.write("id, peer id, current auc, best auc, best beta")
 
         # Allocate reward structures
         self.MAMD = 0
@@ -301,18 +297,6 @@ class GossipAgent:
             candidate = np.arange(n) * step
             look_ahead = list(map(self.eval_beta, candidate.tolist()))
             beta = candidate[np.argmax(look_ahead)]
-
-            # test
-            current_auc = look_ahead[-1]
-            best_auc = max(look_ahead)
-            with open(FLAGS.logdir + '/auc.csv', 'a') as fd:
-                s = [self.id, self.peer_id, current_auc, best_auc, beta]
-                fd.write(",".join(map(str, s)) + "\n")
-            with open(FLAGS.logdir + '/eval_beta.csv', 'a') as fd:
-                look_ahead.insert(0, self.peer_id)
-                look_ahead.insert(0, self.id)
-                s = ",".join(map(str, look_ahead)) + "\n"
-                fd.write(s)
 
             # beta = max(candidate, key=lambda b: self.eval_beta(b))
             # Append state, beta onto "data.csv" for future regression
