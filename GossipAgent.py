@@ -316,7 +316,8 @@ class GossipAgent:
             beta = self.beta_policy.predict(state)  # TODO test to make sure this is correct
             beta = float(beta)
         else:
-            beta = action
+            beta = self.beta_policy()
+            logging.debug(f'agent {self.id} beta {beta}')
 
         # Calculate gradient of peer model on local data (already done in stage 2)
 

@@ -121,6 +121,14 @@ def getAgentConfig(mode):
         distr = np.array([[3, 0, 1, 1], [FLAGS.num_agents - 3, 10, 1, 1]])
         return gen_distribution(distr)
 
+    elif mode.startswith('ndumb-balance-'):
+        dumb_cnt = int(mode.lstrip('ndumb-balance-'))
+        print('dumb_cnt', dumb_cnt)
+        assert FLAGS.num_agents > dumb_cnt
+        distr = np.array([[dumb_cnt, 0, 1, 1], [FLAGS.num_agents - dumb_cnt, 10, 1, 1]])
+        return gen_distribution(distr)
+
+
 
     elif mode == '1dumb-extreme-1':
         dumb_cnt = max(min(1, FLAGS.num_agents-1), 0)
