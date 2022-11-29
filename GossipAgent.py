@@ -12,6 +12,7 @@ import pickle as pk
 from policy import LinearCritic, LinearPolicy
 from models import MnistMlp
 from sklearn import metrics
+from supervised_learner import nnBeta
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string('beta_net', 'classify', help='')
@@ -78,7 +79,8 @@ class GossipAgent:
                 return 0
             self.beta_policy = _f
         elif FLAGS.beta_net.startswith('pretrain-'):
-            with open(FLAGS.beta_net.strip('pretrain-')+".pkl",'rb') as fp:
+            model_name = FLAGS.beta_net.lstrip('pretrain-') + '.pkl'
+            with open(model_name,'rb') as fp:
                 self.beta_policy = pk.load(fp)
         else:
             raise Exception(FLAGS.beta_net)
@@ -264,7 +266,7 @@ class GossipAgent:
                                list(self.YAYD - self.MAYD) +\
                                list(self.dist-self.other_dist)
 
-    def stage5_helper(self, round):
+    def stage5_helper(self):
         """Given results of first 4 stages, update local model"""
         # Calculate beta value
         if len(self.buffer) < self.ob_history-1:
@@ -312,6 +314,7 @@ class GossipAgent:
         elif FLAGS.beta_net.startswith('pretrain-'):
             state = np.array(self.get_state())[1:].reshape(1, -1)
             beta = self.beta_policy.predict(state)  # TODO test to make sure this is correct
+            beta = float(beta)
         else:
             beta = action
 
