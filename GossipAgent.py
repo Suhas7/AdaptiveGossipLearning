@@ -74,7 +74,7 @@ class GossipAgent:
             def _f(*args, **kwargs):
                 return float(FLAGS.beta_net.strip('fix-'))
             self.beta_policy = _f
-        elif FLAGS.beta_net.startswith('cheat-'):
+        elif FLAGS.beta_net.startswith('cheat-') or FLAGS.beta_net == "heuristic":
             def _f(*args, **kwargs):
                 return 0
             self.beta_policy = _f
@@ -284,6 +284,8 @@ class GossipAgent:
         elif FLAGS.beta_net == 'ddpg':
             beta = action.item()
             # beta = torch.tensor(1, device=self.device).float()
+        elif FLAGS.beta_net == 'heuristic':
+            beta = .5 + self.calculate_rpeer()-self.other_rpeer
         elif FLAGS.beta_net.startswith('cheat-'):
             assert FLAGS.oracle, "Need '--oracle True' to cheat"
             step = float(FLAGS.beta_net.strip('cheat-'))
