@@ -41,6 +41,7 @@ class GossipAgent:
         self.local_step_freq = local_step_freq
         self.beta_lr = lr
         self.classifier_lr = 1e-2
+        self.decay = .98
 
         self.ob_history = 1
         self.buffer = []
@@ -172,6 +173,10 @@ class GossipAgent:
 
         return auc, loss
 
+    def decay_lr(self):
+        self.classifier_lr *= self.decay
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.classifier_lr)
+
     def local_step(self, steps=1, model=None):
         # Train `steps` local step on the model
         total_loss = 0
@@ -179,7 +184,8 @@ class GossipAgent:
             model = self.model
             optim = self.optimizer
         else:
-            optim = torch.optim.Adam(model.parameters(), lr=self.classifier_lr)
+            lr = self.classifier_lr * self.decay if FLAGS.decay_lr else self.classifier_lr
+            optim = torch.optim.Adam(model.parameters(), lr=lr)
         if not self.dumb:
             model.train()
             for i, (data, label) in tqdm(enumerate(self.dataloader), total=steps, desc=f"{self.id} Training", leave=False):
