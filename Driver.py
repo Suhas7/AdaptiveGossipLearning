@@ -1,6 +1,3 @@
-import copy
-
-import torch
 import wandb
 from absl import flags, logging
 
@@ -15,6 +12,7 @@ flags.mark_flag_as_required('agent_info_mode')
 flags.DEFINE_integer('local_step_freq', 5, lower_bound=0, help='')
 flags.DEFINE_bool('combine_grad', False, help='')
 flags.DEFINE_bool('decay_lr', False, help='')
+flags.DEFINE_bool('decay_step', FLAGS, help='')
 
 
 class Driver:

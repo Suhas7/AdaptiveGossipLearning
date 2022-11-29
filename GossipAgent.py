@@ -268,9 +268,11 @@ class GossipAgent:
         else:
             #Vector state is: concat(my_auc_on_my_data - your_auc_on_my_data, \
              #my_auc_on_your_data - your_auc_on_your_data, my_dist-your_dist)
-            return [self.id] + list(self.MAMD - self.YAMD) + \
-                               list(self.YAYD - self.MAYD) +\
-                               list(self.dist-self.other_dist)
+            return [self.id] \
+                   + list(self.MAMD - self.YAMD) \
+                   + list(self.YAYD - self.MAYD) \
+                   + list(self.dist - self.other_dist) \
+                   + [self.classifier_lr]
 
     def stage5_helper(self):
         """Given results of first 4 stages, update local model"""
