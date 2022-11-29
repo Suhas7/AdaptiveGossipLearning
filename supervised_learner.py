@@ -3,10 +3,25 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-import pickle as pkl
 from absl import flags, app
 
+import torch
+import torch.nn as nn
+from torch.optim import Adam
 
+class nnBeta(nn.Module):
+    def __init__(self, in_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+                nn.Linear(in_dim, in_dim*2),
+                nn.Tanh(),
+                nn.Linear(in_dim*2, 1),
+                nn.Sigmoid()
+            )
+    def forward(self, x):
+        return self.net(x)
+    def predict(self, x):
+        return self.forward(torch.as_tensor(x).float())
 
 class SLBetaModel:
     def __init__(self, model):
@@ -14,8 +29,14 @@ class SLBetaModel:
     def predict(self, val):
         return self.sigmoid(self.model.predict(val))
     def sigmoid(self, x):
+        try:
+            x = x.cpu().detach().numpy()
+        except:
+            pass
         ex = np.exp(x)
         return ex / (1 + ex)
+
+import pickle as pkl
 
 
 def main(argv):
@@ -52,6 +73,31 @@ def main(argv):
     print('test mae', mean_absolute_error(test_y, pred_y))
 
     with open(FLAGS.logdir + "/sl_beta_log_odd_ratio_linear_reg.pkl", 'wb') as fp:
+        pkl.dump(SLBetaModel(model),fp)
+
+    # NN
+    print('NN')
+    model = nnBeta(train_X.shape[1])
+    optimizer = Adam(model.parameters(), lr=1e-3)
+    criterion = nn.MSELoss()
+    for epoch in range(1000):
+        pred_y = model(torch.from_numpy(train_X).float()).flatten()
+        loss = criterion(pred_y, torch.from_numpy(train_y).float())
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        if epoch % 50 == 0:
+            print(epoch, loss.item())
+    pred_y = model.predict(torch.from_numpy(train_X).float()).detach().numpy().flatten()
+    pred_y = np.clip(pred_y, 0, 1)
+    print('train mse', mean_squared_error(train_y, pred_y))
+    print('train mae', mean_absolute_error(train_y, pred_y))
+    pred_y = model.predict(torch.from_numpy(test_X).float()).detach().numpy().flatten()
+    pred_y = np.clip(pred_y, 0, 1)
+    print('test mse', mean_squared_error(test_y, pred_y))
+    print('test mae', mean_absolute_error(test_y, pred_y))
+
+    with open(FLAGS.logdir + "/sl_beta_nn.pkl", 'wb') as fp:
         pkl.dump(SLBetaModel(model),fp)
 
 if __name__ == '__main__':

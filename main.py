@@ -23,6 +23,22 @@ flags.mark_flag_as_required('logdir')
 flags.DEFINE_bool('wandb', True, help='')
 flags.DEFINE_string('comment', '', help='')
 
+import torch.nn as nn
+import torch
+class nnBeta(nn.Module):
+    def __init__(self, in_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+                nn.Linear(in_dim, in_dim*2),
+                nn.Tanh(),
+                nn.Linear(in_dim*2, 1),
+                nn.Sigmoid()
+            )
+    def forward(self, x):
+        return self.net(x)
+    def predict(self, x):
+        return self.forward(torch.as_tensor(x).float())
+
 def setup():
     if FLAGS.wandb:
         config = dict(

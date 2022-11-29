@@ -100,11 +100,25 @@ def getAgentConfig(mode):
         assert FLAGS.num_agents > 1, "mode 1dumb-3 requires more than 1 agents"
         distr = np.array([[1, 0, 1, 1], [FLAGS.num_agents - 1, 4, 1, 50]])
         return gen_distribution(distr)
+    elif mode == '1dumb-balance':
+        assert FLAGS.num_agents > 1, "mode 1dumb-balance requires more than 1 agents"
+        distr = np.array([[1, 0, 1, 1], [FLAGS.num_agents-1, 10, 1, 1]])
+        return gen_distribution(distr)
 
     # Two dumb agents
     elif mode == '2dumb-1':  # 2 dumb agent, other agents have balanced data
         assert FLAGS.num_agents > 2, "mode 2dumb-1 requires more than 2 agents"
-        distr = np.array([[2, 0, 1, 1], [FLAGS.num_agents - 1, 10, 1, 1]])
+        distr = np.array([[2, 0, 1, 1], [FLAGS.num_agents - 2, 10, 1, 1]])
+        return gen_distribution(distr)
+    elif mode == '2dumb-balance':
+        assert FLAGS.num_agents > 2, "mode 2dumb-balance requires more than 2 agents"
+        distr = np.array([[2, 0, 1, 1], [FLAGS.num_agents - 2, 10, 1, 1]])
+        return gen_distribution(distr)
+
+    # Three dumb agents
+    elif mode == '3dumb-balance':
+        assert FLAGS.num_agents > 3, "mode 3dumb-balance requires more than 3 agents"
+        distr = np.array([[3, 0, 1, 1], [FLAGS.num_agents - 3, 10, 1, 1]])
         return gen_distribution(distr)
 
 
