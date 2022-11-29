@@ -315,6 +315,7 @@ class GossipAgent:
             state = np.array(self.get_state())[1:].reshape(1, -1)
             beta = self.beta_policy.predict(state)  # TODO test to make sure this is correct
             beta = float(beta)
+            logging.debug(f'agent {self.id} beta {beta}')
         else:
             beta = self.beta_policy()
             logging.debug(f'agent {self.id} beta {beta}')
