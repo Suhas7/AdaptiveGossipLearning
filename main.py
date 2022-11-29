@@ -1,14 +1,15 @@
 import os.path
 import random
-
 import torch.random
 import wandb
 from absl import app, flags, logging
-from Driver import Driver
-from data_distribution import fetch_mnist_data
 import matplotlib.pyplot as plt
 import numpy as np
 from torch.utils.data import DataLoader
+
+from Driver import Driver
+from data_distribution import fetch_mnist_data
+from supervised_learner import SLBetaModel
 
 logging.set_verbosity(logging.DEBUG)
 
@@ -20,26 +21,53 @@ flags.DEFINE_integer('n_train_img', 1000, lower_bound=2, help='')
 flags.DEFINE_string('logdir', None, help='')
 flags.mark_flag_as_required('logdir')
 flags.DEFINE_bool('wandb', True, help='')
+flags.DEFINE_string('comment', '', help='')
+
+import torch.nn as nn
+import torch
+class nnBeta(nn.Module):
+    def __init__(self, in_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+                nn.Linear(in_dim, in_dim*2),
+                nn.Tanh(),
+                nn.Linear(in_dim*2, 1),
+                nn.Sigmoid()
+            )
+    def forward(self, x):
+        return self.net(x)
+    def predict(self, x):
+        return self.forward(torch.as_tensor(x).float())
 
 def setup():
-    config = dict(
-        num_agent=FLAGS.num_agents,
-        num_image=FLAGS.n_train_img,
-        num_class=FLAGS.num_class,
-        mode=FLAGS.agent_info_mode,
-        local_freq=FLAGS.local_step_freq,
-        combine_grad=FLAGS.combine_grad,
-        env_mode=FLAGS.env_mode,
-        grid_h=FLAGS.env_grid_h,
-        grid_w=FLAGS.env_grid_w
-    )
-    name = str(FLAGS.num_agent) + '_' + FLAGS.agent_info_mode
-    wandb.init(project='Gossip Learning', entity='gossips', group='grid_not_move', job_type='test', name=name,
-               config=config)
-    wandb.define_metric('round')
-    wandb.define_metric('comm/*', step_metric='round')
-    wandb.define_metric('auc/*', step_metric='round')
-    wandb.define_metric('local_auc/*', step_metric='round')
+    if FLAGS.wandb:
+        config = dict(
+            num_agent=FLAGS.num_agents,
+            num_image=FLAGS.n_train_img,
+            num_class=FLAGS.num_class,
+            mode=FLAGS.agent_info_mode,
+            local_freq=FLAGS.local_step_freq,
+            combine_grad=FLAGS.combine_grad,
+            env_mode=FLAGS.env_mode,
+            grid_h=FLAGS.env_grid_h,
+            grid_w=FLAGS.env_grid_w,
+            oracle=FLAGS.oracle,
+            vector=FLAGS.vector_rp
+        )
+        name = FLAGS.agent_info_mode + '_' + FLAGS.beta_net
+        if FLAGS.vector_rp:
+            name += '_v'
+        if len(FLAGS.comment) != 0:
+            name += '_' + FLAGS.comment
+        job = str(FLAGS.num_agents) + '_agents'
+        wandb.init(project='Gossip Learning', entity='gossips', group='no_move', job_type=job, name=name,
+                   config=config)
+        wandb.define_metric('round')
+        wandb.define_metric('comm_loss/*', step_metric='round')
+        wandb.define_metric('comm_r/*', step_metric='round')
+        wandb.define_metric('comm/*', step_metric='round')
+        wandb.define_metric('auc/*', step_metric='round')
+        wandb.define_metric('local_auc/*', step_metric='round')
 
 def main(argv):
     setup()
@@ -55,17 +83,22 @@ def main(argv):
     # Select device
     if torch.cuda.is_available():
         device = torch.device('cuda')
-    elif torch.backends.mps.is_available():
-        device = torch.device('mps')
+#    elif torch.backends.mps.is_available():
+#        device = torch.device('mps')
     else:
         device = torch.device('cpu')
+
+    # Fetch test dataset
+    _, full_test = fetch_mnist_data()
+    test_dataloader = DataLoader(full_test, batch_size=256, shuffle=False)
 
     driver = Driver(
         num_agents      = FLAGS.num_agents, 
         agent_info_mode = FLAGS.agent_info_mode, 
         local_step_freq = FLAGS.local_step_freq,
         n_train_img     = FLAGS.n_train_img,
-        device          = device
+        device          = device,
+        oracle_data     = full_test
     )
 
     # Dictionary to store performance at each step
@@ -74,10 +107,6 @@ def main(argv):
     for id in driver.agents.keys():
         aucs[id] = list()
         local_aucs[id] = list()
-
-    # Fetch test dataset
-    _, full_test = fetch_mnist_data()
-    test_dataloader = DataLoader(full_test, batch_size=256, shuffle=False)
 
     # Run environment
     for i in range(FLAGS.num_env_steps):
@@ -89,26 +118,30 @@ def main(argv):
         for id, agent in driver.agents.items():
             auc = agent.evaluate(agent.model, test_dataloader)[0]
             local_auc = agent.evaluate(agent.model, agent.dataloader)[0]
+            logging.debug(f'agent {id} auc {auc:.5f} local_auc {local_auc:.5f}')
             aucs[id].append(auc)
             local_aucs[id].append(local_auc)
 
             # Log to wandb
-            count = 0
-            if count < FLAGS.num_agents - 1:
-                wandb.log({'auc/'+str(id): auc, 'local_auc/'+str(id): local_auc}, commit=False)
-                count += 1
-            else:
-                wandb.log({'auc/' + str(id): auc, 'local_auc/' + str(id): local_auc})
+            if FLAGS.wandb:
+                count = 0
+                if count < FLAGS.num_agents - 1:
+                    wandb.log({'auc/'+str(id): auc, 'local_auc/'+str(id): local_auc}, commit=False)
+                    count += 1
+                else:
+                    wandb.log({'auc/' + str(id): auc, 'local_auc/' + str(id): local_auc})
 
+    # local logging
     with open(f'{FLAGS.logdir}/Agent_auc.txt', 'a') as f:
         for id in aucs:
             print(id, file=f)
             print(aucs[id], file=f)
     x = np.arange(FLAGS.num_env_steps)
+    k = 10
+    print(f'AUC (last {k})')
     for id in driver.agents.keys():
+        print(id, aucs[id][-k:])
         plt.plot(x, aucs[id], label=f'{id}')
-    #output = sum(np.asarray(list(driver.agents.values()))/len(driver.agents.keys())
-    #print(output)
     plt.legend()
     plt.savefig(f"{FLAGS.logdir}/Agents Curve", bbox_inches='tight')
     plt.clf()

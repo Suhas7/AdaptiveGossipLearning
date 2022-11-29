@@ -1,4 +1,13 @@
 
+# 11/21/2022
+
+## TODOs
+
+* Test if current weight merging method works
+  [ ] Run env with 2 agents, top weight 50 for 5 classes and gridsearch for optimal beta
+* Test new method (gradient merge method)
+  [ ] Test if current gradient merge method works properly
+
 # 10/24/2022
 
 ## Some possible questions about our current method

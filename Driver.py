@@ -17,7 +17,7 @@ flags.DEFINE_bool('combine_grad', False, help='')
 
 
 class Driver:
-    def __init__(self, num_agents, agent_info_mode, local_step_freq, n_train_img, device):
+    def __init__(self, num_agents, agent_info_mode, local_step_freq, n_train_img, device, oracle_data=None):
         # Hyperparameters
         self.local_step_freq = local_step_freq  # number of local steps between each peer step.
 
@@ -41,13 +41,16 @@ class Driver:
         for i in range(num_agents):
             self.agents[i] = GossipAgent(
                 aid=i,
-                data=self.distributor.distribute_data(agentConfig.dists[i], self.n_train_img),
+                dataset=self.distributor.distribute_data(agentConfig.dists[i], self.n_train_img, i),
                 alpha=agentConfig.alphas[i],
                 sigma=agentConfig.sigmas[i],
                 coord=agentConfig.start_coords[i],
                 combine_grad=FLAGS.combine_grad,
                 device=device,
-                dummy=agentConfig.dummy[i]
+                dummy=agentConfig.dummy[i],
+                oracle_data=oracle_data,
+                dist=agentConfig.dists[i],
+                local_step_freq=local_step_freq
             )
             logging.debug('Driver: agents {} created'.format(i))
 
@@ -66,12 +69,14 @@ class Driver:
 
     def env_step(self):
         # Execute all local steps
-        wandb.log({'round': self.episode_count + 1}, commit=False)
+        if FLAGS.wandb:
+            wandb.log({'round': self.episode_count + 1}, commit=False)
         count = 0
         for key, agent in self.agents.items():
             logging.debug('Agent %d local step' % key)
             avg_loss = agent.local_step(self.local_step_freq)
-            wandb.log({f'train/loss_{agent.id}': avg_loss}, commit=count == FLAGS.num_agents - 1)
+            if FLAGS.wandb:
+                wandb.log({f'train/loss_{agent.id}': avg_loss}, commit=count == FLAGS.num_agents - 1)
             count += 1
 
         logging.debug('Complete local step')
@@ -92,9 +97,9 @@ class Driver:
         # todo make this async friendly
         agentA.stage1_comm_model(agentB)
         agentA.stage2_eval_peer(agentB)
-        agentA.stage3_comm_accs(agentB)
+        agentA.stage3_comm_aucs(agentB)
         agentA.stage4_comm_rpeer(agentB)
-        agentA.stage5_local_updates(agentB, self.episode_count)
+        agentA.stage5_local_updates(agentB)
     # agentA.save_models(self.episode_count)
     # agentB.save_models(self.episode_count)
 
