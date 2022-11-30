@@ -18,6 +18,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('beta_net', 'classify', help='')
 flags.DEFINE_bool('oracle', True, help='')
 flags.DEFINE_bool('vector_rp', True, help='')
+flags.DEFINE_string('sldir', '.', help='')
 
 '''
 scope: self
@@ -41,6 +42,7 @@ class GossipAgent:
         self.local_step_freq = local_step_freq
         self.beta_lr = lr
         self.classifier_lr = 1e-2
+        self.decay = .98
 
         self.ob_history = 1
         self.buffer = []
@@ -79,7 +81,7 @@ class GossipAgent:
                 return 0
             self.beta_policy = _f
         elif FLAGS.beta_net.startswith('pretrain-'):
-            model_name = FLAGS.beta_net.lstrip('pretrain-') + '.pkl'
+            model_name = FLAGS.sldir + '/' + FLAGS.beta_net.lstrip('pretrain-') + '.pkl'
             with open(model_name,'rb') as fp:
                 self.beta_policy = pk.load(fp)
         else:
@@ -98,10 +100,6 @@ class GossipAgent:
         if aid == 0:
             with open(FLAGS.logdir + '/data.csv', 'w') as fp:
                 fp.write("")
-            with open(FLAGS.logdir + '/eval_beta.csv', 'w') as fd:
-                fd.write("")
-            with open(FLAGS.logdir + '/auc.csv', 'w') as fd:
-                fd.write("id, peer id, current auc, best auc, best beta")
 
         # Allocate reward structures
         self.MAMD = 0
@@ -172,6 +170,10 @@ class GossipAgent:
 
         return auc, loss
 
+    def decay_lr(self):
+        self.classifier_lr *= self.decay
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.classifier_lr)
+
     def local_step(self, steps=1, model=None):
         # Train `steps` local step on the model
         total_loss = 0
@@ -179,7 +181,8 @@ class GossipAgent:
             model = self.model
             optim = self.optimizer
         else:
-            optim = torch.optim.Adam(model.parameters(), lr=self.classifier_lr)
+            lr = self.classifier_lr * self.decay if FLAGS.decay_lr else self.classifier_lr
+            optim = torch.optim.Adam(model.parameters(), lr=lr)
         if not self.dumb:
             model.train()
             for i, (data, label) in tqdm(enumerate(self.dataloader), total=steps, desc=f"{self.id} Training", leave=False):
@@ -262,9 +265,11 @@ class GossipAgent:
         else:
             #Vector state is: concat(my_auc_on_my_data - your_auc_on_my_data, \
              #my_auc_on_your_data - your_auc_on_your_data, my_dist-your_dist)
-            return [self.id] + list(self.MAMD - self.YAMD) + \
-                               list(self.YAYD - self.MAYD) +\
-                               list(self.dist-self.other_dist)
+            return [self.id] \
+                   + list(self.MAMD - self.YAMD) \
+                   + list(self.YAYD - self.MAYD) \
+                   + list(self.dist - self.other_dist) \
+                   + [self.classifier_lr]
 
     def stage5_helper(self):
         """Given results of first 4 stages, update local model"""
@@ -294,18 +299,6 @@ class GossipAgent:
             candidate = np.arange(n) * step
             look_ahead = list(map(self.eval_beta, candidate.tolist()))
             beta = candidate[np.argmax(look_ahead)]
-
-            # test
-            current_auc = look_ahead[-1]
-            best_auc = max(look_ahead)
-            with open(FLAGS.logdir + '/auc.csv', 'a') as fd:
-                s = [self.id, self.peer_id, current_auc, best_auc, beta]
-                fd.write(",".join(map(str, s)) + "\n")
-            with open(FLAGS.logdir + '/eval_beta.csv', 'a') as fd:
-                look_ahead.insert(0, self.peer_id)
-                look_ahead.insert(0, self.id)
-                s = ",".join(map(str, look_ahead)) + "\n"
-                fd.write(s)
 
             # beta = max(candidate, key=lambda b: self.eval_beta(b))
             # Append state, beta onto "data.csv" for future regression

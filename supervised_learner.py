@@ -57,7 +57,7 @@ def main(argv):
     print('test mse', mean_squared_error(test_y, pred_y))
     print('test mae', mean_absolute_error(test_y, pred_y))
 
-    with open(FLAGS.logdir + "/sl_beta_linear_reg.pkl", 'wb') as fp:
+    with open(FLAGS.logdir + "/linear.pkl", 'wb') as fp:
         pkl.dump(SLBetaModel(model), fp)
 
     # log-odds-ratio
@@ -72,7 +72,7 @@ def main(argv):
     print('test mse', mean_squared_error(test_y, pred_y))
     print('test mae', mean_absolute_error(test_y, pred_y))
 
-    with open(FLAGS.logdir + "/sl_beta_log_odd_ratio_linear_reg.pkl", 'wb') as fp:
+    with open(FLAGS.logdir + "/log_odd.pkl", 'wb') as fp:
         pkl.dump(SLBetaModel(model),fp)
 
     # NN
@@ -97,7 +97,7 @@ def main(argv):
     print('test mse', mean_squared_error(test_y, pred_y))
     print('test mae', mean_absolute_error(test_y, pred_y))
 
-    with open(FLAGS.logdir + "/sl_beta_nn.pkl", 'wb') as fp:
+    with open(FLAGS.logdir + "/nn.pkl", 'wb') as fp:
         pkl.dump(SLBetaModel(model),fp)
 
 if __name__ == '__main__':

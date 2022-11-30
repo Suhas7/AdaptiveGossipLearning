@@ -52,14 +52,19 @@ def setup():
             grid_h=FLAGS.env_grid_h,
             grid_w=FLAGS.env_grid_w,
             oracle=FLAGS.oracle,
-            vector=FLAGS.vector_rp
+            vector=FLAGS.vector_rp,
+            decay=FLAGS.decay_lr
         )
         name = FLAGS.agent_info_mode + '_' + FLAGS.beta_net
         if FLAGS.vector_rp:
             name += '_v'
+        if FLAGS.decay_lr:
+            name += '_d'
         if len(FLAGS.comment) != 0:
             name += '_' + FLAGS.comment
         job = str(FLAGS.num_agents) + '_agents'
+        if FLAGS.oracle:
+            job += '_oracle'
         wandb.init(project='Gossip Learning', entity='gossips', group='no_move', job_type=job, name=name,
                    config=config)
         wandb.define_metric('round')
