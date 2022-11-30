@@ -367,7 +367,7 @@ class GossipAgent:
             self.beta_optimizer.step()
 
             # log data
-            if FLAGS.wandb:
+            if FLAGS.wandb and not self.dumb:
                 wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
                            f'comm_loss/beta_loss-{self.id}-{self.peer_id}': beta_loss,
                            f'comm_r/reward_{self.id}': reward}, commit=False)
@@ -414,14 +414,14 @@ class GossipAgent:
                     self.beta_critic_optimizer.step()
 
             # log data
-            if FLAGS.wandb:
+            if FLAGS.wandb and not self.dumb:
                 wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
                            f'comm_loss/beta_loss-{self.id}-{self.peer_id}': beta_loss.item(),
                            f'comm_loss/beta_critic_loss-{self.id}-{self.peer_id}': beta_critic_loss.item(),
                            f'comm_r/reward_{self.id}': reward}, commit=False)
         else:
             # log data
-            if FLAGS.wandb:
+            if FLAGS.wandb and not self.dumb:
                 logging.debug('agent {} peer beta {}'.format(self.id, beta))
                 logging.debug('{} {} {} {}'.format(self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer))
                 if FLAGS.wandb:
