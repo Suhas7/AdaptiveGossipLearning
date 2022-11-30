@@ -63,6 +63,8 @@ def setup():
         if len(FLAGS.comment) != 0:
             name += '_' + FLAGS.comment
         job = str(FLAGS.num_agents) + '_agents'
+        if FLAGS.oracle:
+            job += '_oracle'
         wandb.init(project='Gossip Learning', entity='gossips', group='no_move', job_type=job, name=name,
                    config=config)
         wandb.define_metric('round')
