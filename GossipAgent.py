@@ -159,7 +159,6 @@ class GossipAgent:
                 for lab in label.tolist():
                     found.add(lab)
                 preds.append(pred)
-            
             missing = list()
             for i in range(FLAGS.num_class):
                 if i not in found: 
@@ -167,16 +166,12 @@ class GossipAgent:
             missing = torch.as_tensor(missing)
             labels.append(missing)
             labels = torch.cat(labels)
-            preds.append((missing+1) % FLAGS.num_class)
-            print(labels)
-            print(preds)
             preds = torch.argmax(torch.cat(preds), dim=1)
+            preds = torch.cat([preds,((missing+1) % FLAGS.num_class)])
             auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(),
                                    average = None if vector else 'macro')
-
             if model is self.model:
                 self.MAMD_history.append(auc)
-
         return auc, loss
 
     def decay_lr(self):
@@ -217,8 +212,8 @@ class GossipAgent:
     def stage1_comm_model(self, other):
         # logging.debug('stage 1')
         # Evaluate yourself
-        self.MAMD, self.loss = self.evaluate(self.model, self.dataloader)
-        other.MAMD, other.loss = other.evaluate(other.model, other.dataloader)
+        self.MAMD, self.loss = self.evaluate(self.model, self.dataloader,      vector=FLAGS.vector_rp)
+        other.MAMD, other.loss = other.evaluate(other.model, other.dataloader, vector=FLAGS.vector_rp)
         self.YAYD = other.MAMD
         other.YAYD = self.MAMD
         self.other_dist = other.dist
