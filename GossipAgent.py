@@ -50,8 +50,8 @@ class GossipAgent:
         self.dataset = dataset
         self.dataloader = DataLoader(self.dataset, batch_size=64, shuffle=True)
 
-        logging.info(f'agent {self.id} data size {len(dataset)}')
-        logging.info(f'agent {self.id} step per epoch {len(self.dataloader)}')
+        logging.debug(f'agent {self.id} data size {len(dataset)}')
+        logging.debug(f'agent {self.id} step per epoch {len(self.dataloader)}')
 
         self.device = device
 
