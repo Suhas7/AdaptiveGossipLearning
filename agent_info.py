@@ -12,11 +12,10 @@ FLAGS = flags.FLAGS
 flags.DEFINE_integer('num_agents', None, lower_bound=1, help='')
 flags.mark_flag_as_required('num_agents')
 flags.DEFINE_integer('num_dumb', 0, lower_bound=0, help='')
-flags.DEFINE_integer('nskew', 0, lower_bound=0, help='')
+flags.DEFINE_integer('nskew', 10, lower_bound=0, help='')
 flags.DEFINE_integer('topweight', 1, lower_bound=1, help='')
 flags.DEFINE_integer('baseweight', 1, lower_bound=0, help='')
 flags.DEFINE_integer('num_class', 10, lower_bound=1, help='')
-flags.mark_flag_as_required('num_class')
 flags.DEFINE_integer('seed', 0, help='')
 
 @dataclass
@@ -30,9 +29,9 @@ class AgentConfig:
 
 '''Create a distribution where N classes have topweight, the rest have baseweight'''
 def _gen_nclass(N, baseweight, topweight):
-    if N == 0:
-        return np.ones(FLAGS.num_class) / FLAGS.num_class
     assert topweight >= baseweight
+    if N == 0:
+        N = FLAGS.nskew
     norm = N*topweight + (FLAGS.num_class-N)*baseweight
     w = np.ones(FLAGS.num_class)
     tops = np.random.choice(FLAGS.num_class, size=N, replace=False)
@@ -72,6 +71,6 @@ def getAgentConfig():
     seed(FLAGS.seed)
     np.random.seed(FLAGS.seed)
     
-    distr = np.array([[FLAGS.num_agents-FLAGS.num_dumb, FLAGS.nskew, FLAGS.baseweight, FLAGS.baseweight],\
-                        [FLAGS.num_dumb, FLAGS.nskew, FLAGS.baseweight, FLAGS.baseweight],])
+    distr = np.array([[FLAGS.num_agents-FLAGS.num_dumb, FLAGS.nskew, FLAGS.baseweight, FLAGS.topweight],  # good
+                      [FLAGS.num_dumb, 0, FLAGS.baseweight, FLAGS.topweight]])  # dumb
     return gen_distribution(distr)
