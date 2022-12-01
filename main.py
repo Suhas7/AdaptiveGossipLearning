@@ -66,6 +66,7 @@ def setup():
         wandb.define_metric('comm_loss/*', step_metric='round')
         wandb.define_metric('comm_r/*', step_metric='round')
         wandb.define_metric('comm/*', step_metric='round')
+        wandb.define_metric('ave_auc', step_metric='round')
         wandb.define_metric('auc/*', step_metric='round')
         wandb.define_metric('local_auc/*', step_metric='round')
         if FLAGS.logdir == 'tmp':
@@ -114,23 +115,32 @@ def main(argv):
         logging.debug("Beginning env_step {}".format(i))
         driver.env_step()
         logging.debug("Env step #%d", i)
-
+        average = 0
         # Test each agent model against test dataset
         for id, agent in driver.agents.items():
             auc = agent.evaluate(agent.model, test_dataloader)[0]
             local_auc = agent.evaluate(agent.model, agent.dataloader)[0]
             logging.debug(f'agent {id} auc {auc:.5f} local_auc {local_auc:.5f}')
             aucs[id].append(auc)
+            average += auc
             local_aucs[id].append(local_auc)
 
             # Log to wandb
-            if FLAGS.wandb:
+            if FLAGS.wandb and not agent.dumb:
                 count = 0
                 if count < FLAGS.num_agents - 1:
                     wandb.log({'auc/'+str(id): auc, 'local_auc/'+str(id): local_auc}, commit=False)
                     count += 1
                 else:
                     wandb.log({'auc/' + str(id): auc, 'local_auc/' + str(id): local_auc})
+        if FLAGS.wandb:
+            average /= FLAGS.num_agents - FLAGS.num_dumb
+            count = 0
+            if count < FLAGS.num_agents - 1:
+                wandb.log({'ave_auc/': average}, commit=False)
+                count += 1
+            else:
+                wandb.log({'ave_auc/': average})
 
     # local logging
     with open(f'{FLAGS.logdir}/Agent_auc.txt', 'a') as f:
