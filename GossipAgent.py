@@ -169,7 +169,7 @@ class GossipAgent:
 
     def decay_lr(self):
         self.classifier_lr *= self.decay
-        self.classifier_lr = max(self.classifier_lr, self.default_lr/10)
+        self.classifier_lr = max(self.classifier_lr, self.default_lr/100)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.classifier_lr)
 
     def local_step(self, steps=1, model=None):
