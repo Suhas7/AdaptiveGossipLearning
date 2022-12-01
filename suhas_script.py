@@ -7,7 +7,7 @@ params = [[10,50,100],  #NUM_AGENTS
 		  [15], # topweight
 		  [400], # num env steps
 		  [10,50], #num_train_images
-		  ["fix-0.5","fix-1.0","heuristic","sl_20a10d_linear.pkl"], # Modes
+		  ["fix-0.5","fix-1.0","heuristic","sl_robert_cheat20-.04_linear.pkl"], # Modes
 		  ["--decay_lr",""]] #Whether to decay LR or not
 
 cmds = list()

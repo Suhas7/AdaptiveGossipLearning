@@ -11,7 +11,7 @@ from Driver import Driver
 from data_distribution import fetch_mnist_data
 from supervised_learner import SLBetaModel
 
-logging.set_verbosity(logging.DEBUG)
+logging.set_verbosity(logging.INFO)
 
 FLAGS = flags.FLAGS
 
@@ -114,7 +114,7 @@ def main(argv):
     for i in range(FLAGS.num_env_steps):
         logging.debug("Beginning env_step {}".format(i))
         driver.env_step()
-        logging.debug("Env step #%d", i)
+        logging.info("Env step #%d", i)
         average = 0
         # Test each agent model against test dataset
         for id, agent in driver.agents.items():
