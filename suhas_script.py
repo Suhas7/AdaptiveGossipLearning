@@ -24,10 +24,12 @@ params = [[5,20,50,100],
 
 from itertools import product
 cmds = list()
+cmds.append("mkdir -p suhas_script")
 for cfg in product(*params):
 	na,pd,nsk,dsk,nes,nti,bn,dlr = cfg
 	ld = f"./suhas_script/AGT{na}-{int(na*pd)}_IMG{nti}_SK{nsk}-{dsk}_{bn}"
-	cmd = f"python3 main.py --num_agents{na} --num_dumb {int(na*pd)} --nskew {nsk} --dskew {dsk} "+\
+	cmds.append(f"mkdir -p {ld}")
+	cmd = f"python3 main.py --num_agents {na} --num_dumb {int(na*pd)} --nskew {nsk} --topweight {dsk} "+\
 			f"--num_env_steps {nes} --n_train_img {nti} --beta_net {bn} {dlr} --log_dir {ld}"
 	cmds.append(cmd)
 
