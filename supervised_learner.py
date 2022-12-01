@@ -37,8 +37,6 @@ class SLBetaModel:
         ex = np.exp(x)
         return ex / (1 + ex)
 
-
-
 def main(argv):
     df = pd.read_csv(FLAGS.logdir + '/data.csv', header=None)
     X, y = df.iloc[:, 1:-1].to_numpy(), df.iloc[:, -1].to_numpy()

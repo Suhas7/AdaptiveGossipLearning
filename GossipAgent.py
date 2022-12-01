@@ -47,7 +47,6 @@ class GossipAgent:
         self.ob_history = 1
         self.buffer = []
 
-        # TODO: Load test data as well
         self.dataset = dataset
         self.dataloader = DataLoader(self.dataset, batch_size=64, shuffle=True)
 
@@ -57,9 +56,7 @@ class GossipAgent:
         self.device = device
 
         self.oracle_data = oracle_data
-        self.oracle_dataloader = None
-        if oracle_data is not None:
-            self.oracle_dataloader = DataLoader(oracle_data, batch_size=256, shuffle=False)
+        self.oracle_dataloader = DataLoader(oracle_data, batch_size=256, shuffle=False)
 
         # Import agent model, both for prediction and beta policy
         if FLAGS.beta_net == 'classify':
@@ -293,7 +290,6 @@ class GossipAgent:
             beta = .5*(1+self.calculate_rpeer()-self.other_rpeer)
             beta = float(beta.mean())
         elif FLAGS.beta_net.startswith('cheat-'):
-            assert FLAGS.oracle, "Need '--oracle True' to cheat"
             step = float(FLAGS.beta_net.strip('cheat-'))
             n = math.floor(1 / step) + 1
             candidate = np.arange(n) * step
@@ -342,11 +338,8 @@ class GossipAgent:
 
         '''Update beta network'''
         # train beta using self.calculate_total_reward()
-        if FLAGS.oracle:
-            reward = self.evaluate(self.model, self.oracle_dataloader)[0]
-        else:
-            reward = self.alpha * self.MAMD + (1 - self.alpha) * self.calculate_rpeer()
-        assert 0 <= reward <= 1
+        #reward = self.evaluate(self.model, self.oracle_dataloader)[0]
+        reward = self.alpha * self.MAMD + (1 - self.alpha) * self.calculate_rpeer()
 
         self.buffer.append(((self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer, beta), reward))
 
