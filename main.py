@@ -56,12 +56,13 @@ def setup():
             vector=FLAGS.vector_rp,
             decay=FLAGS.decay_lr
         )
-        group = "_".join([FLAGS.num_agents,FLAGS.num_dumb,FLAGS.n_train_img,\
-                         FLAGS.nskew,FLAGS.topweight/FLAGS.baseweight])
+        group = "_".join([f"AGENTS{FLAGS.num_agents}-{FLAGS.num_dumb}",\
+                          f"IMG{FLAGS.n_train_img}",\
+                          f"SKEW{FLAGS.nskew}-{FLAGS.topweight/FLAGS.baseweight}"])
         tags = ('v' if FLAGS.vector_rp else "") + ('d' if FLAGS.decay_lr else "")
         name = f"{FLAGS.beta_net}-{tags}"
         if len(FLAGS.comment) != 0: name += '_' + FLAGS.comment
-        wandb.init(project='Gossip Learning', entity='gossips', group=group, job_type=job, name=name,
+        wandb.init(project='Gossip Learning', entity='gossips', group=group, job_type=tags, name=name,
                    config=config)
         wandb.define_metric('round')
         wandb.define_metric('comm_loss/*', step_metric='round')
