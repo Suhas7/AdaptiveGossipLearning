@@ -412,5 +412,4 @@ class GossipAgent:
                 logging.debug('agent {} peer beta {}'.format(self.id, beta))
                 logging.debug('{} {} {} {}'.format(self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer))
                 if FLAGS.wandb:
-                    wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta,
-                               f'comm_r/reward_{self.id}': reward}, commit=False)
+                    wandb.log({f'comm/beta-{self.id}-{self.peer_id}': beta}, commit=False)
