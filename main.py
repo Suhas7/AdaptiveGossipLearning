@@ -56,8 +56,9 @@ def setup():
         )
         group = "_".join([f"AGT{FLAGS.num_agents}-{FLAGS.num_dumb}",
                           f"IMG{FLAGS.n_train_img}",
-                          f"SKW{FLAGS.nskew}-{FLAGS.topweight/FLAGS.baseweight}"])
-        tags = ('v' if FLAGS.vector_rp else "") + ('d' if FLAGS.decay_lr else "")
+                          f"SKW{FLAGS.nskew}-{FLAGS.topweight/FLAGS.baseweight}",
+                          f"ST{FLAGS.state_type}"])
+        tags = ('d' if FLAGS.decay_lr else "")
         net = FLAGS.beta_net.strip("pretrain-")
         name = f"{net}-{tags}"
         if len(FLAGS.comment) != 0: name += '_' + FLAGS.comment

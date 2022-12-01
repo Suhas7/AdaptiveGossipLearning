@@ -17,7 +17,7 @@ from supervised_learner import nnBeta
 FLAGS = flags.FLAGS
 flags.DEFINE_string('beta_net', 'classify', help='')
 flags.DEFINE_bool('oracle', True, help='')
-flags.DEFINE_string('state_type', "default", help='')
+flags.DEFINE_string('state_type', "og", help='')
 flags.DEFINE_string('sldir', '.', help='')
 
 '''
@@ -50,8 +50,8 @@ class GossipAgent:
         self.dataset = dataset
         self.dataloader = DataLoader(self.dataset, batch_size=64, shuffle=True)
 
-        logging.info(f'agent {self.id} data size {len(dataset)}')
-        logging.info(f'agent {self.id} step per epoch {len(self.dataloader)}')
+        logging.debug(f'agent {self.id} data size {len(dataset)}')
+        logging.debug(f'agent {self.id} step per epoch {len(self.dataloader)}')
 
         self.device = device
 
@@ -142,7 +142,7 @@ class GossipAgent:
             return 0
         return result / denom
 
-    def evaluate(self, model, dataloader, vector="default"):
+    def evaluate(self, model, dataloader, state_type="default"):
         # TODO: add option to sample from dataset to evaluate model
         model.eval()
         loss = 0
@@ -152,13 +152,12 @@ class GossipAgent:
             for data, label in tqdm(dataloader, desc=f"{self.id} Evaluating", leave=False):
                 pred = model(data.to(self.device))
                 loss += torch.nn.functional.cross_entropy(pred, label.to(self.device))
-                labels.append(label)
                 preds.append(pred)
-
+            labels = list(range(FLAGS.num_class))
             labels = torch.cat(labels)
             preds = torch.argmax(torch.cat(preds), dim=1)
             auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(),
-                                   average = None if vector=="vector" else 'macro')
+                                   average = None if state_type=="vector" else 'macro')
 
             if model is self.model:
                 self.MAMD_history.append(auc)
@@ -203,8 +202,8 @@ class GossipAgent:
     def stage1_comm_model(self, other):
         # logging.debug('stage 1')
         # Evaluate yourself
-        self.MAMD, self.loss = self.evaluate(self.model, self.dataloader,      vector=FLAGS.state_type)
-        other.MAMD, other.loss = other.evaluate(other.model, other.dataloader, vector=FLAGS.state_type)
+        self.MAMD, self.loss = self.evaluate(self.model, self.dataloader,      state_type=FLAGS.state_type)
+        other.MAMD, other.loss = other.evaluate(other.model, other.dataloader, state_type=FLAGS.state_type)
         self.YAYD = other.MAMD
         other.YAYD = self.MAMD
         self.other_dist = other.dist
@@ -219,8 +218,8 @@ class GossipAgent:
     def stage2_eval_peer(self, other):
         # logging.debug('stage 2')
         # Evaluate peer model locally (to compute accuracy & gradient)
-        self.YAMD, self.peer_loss = self.evaluate(self.peer_model, self.dataloader,      vector=FLAGS.state_type)
-        other.YAMD, other.peer_loss = other.evaluate(other.peer_model, other.dataloader, vector=FLAGS.state_type)
+        self.YAMD, self.peer_loss = self.evaluate(self.peer_model, self.dataloader,      state_type=FLAGS.state_type)
+        other.YAMD, other.peer_loss = other.evaluate(other.peer_model, other.dataloader, state_type=FLAGS.state_type)
 
     def stage3_comm_aucs(self, other):
         # logging.debug('stage 3')
