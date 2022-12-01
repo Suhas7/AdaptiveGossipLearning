@@ -1,6 +1,3 @@
-import copy
-
-import torch
 import wandb
 from absl import flags, logging
 
@@ -14,6 +11,7 @@ flags.DEFINE_string('agent_info_mode', None, help='')
 flags.mark_flag_as_required('agent_info_mode')
 flags.DEFINE_integer('local_step_freq', 5, lower_bound=0, help='')
 flags.DEFINE_bool('combine_grad', False, help='')
+flags.DEFINE_bool('decay_lr', False, help='')
 
 
 class Driver:
@@ -74,6 +72,8 @@ class Driver:
         count = 0
         for key, agent in self.agents.items():
             logging.debug('Agent %d local step' % key)
+            if FLAGS.decay_lr:
+                agent.decay_lr()
             avg_loss = agent.local_step(self.local_step_freq)
             if FLAGS.wandb:
                 wandb.log({f'train/loss_{agent.id}': avg_loss}, commit=count == FLAGS.num_agents - 1)

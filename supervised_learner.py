@@ -4,6 +4,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from absl import flags, app
+import pickle as pkl
 
 import torch
 import torch.nn as nn
@@ -36,7 +37,6 @@ class SLBetaModel:
         ex = np.exp(x)
         return ex / (1 + ex)
 
-import pickle as pkl
 
 
 def main(argv):
@@ -57,7 +57,7 @@ def main(argv):
     print('test mse', mean_squared_error(test_y, pred_y))
     print('test mae', mean_absolute_error(test_y, pred_y))
 
-    with open(FLAGS.logdir + "/sl_beta_linear_reg.pkl", 'wb') as fp:
+    with open(FLAGS.logdir + "/linear.pkl", 'wb') as fp:
         pkl.dump(SLBetaModel(model), fp)
 
     # log-odds-ratio
@@ -72,10 +72,11 @@ def main(argv):
     print('test mse', mean_squared_error(test_y, pred_y))
     print('test mae', mean_absolute_error(test_y, pred_y))
 
-    with open(FLAGS.logdir + "/sl_beta_log_odd_ratio_linear_reg.pkl", 'wb') as fp:
+    with open(FLAGS.logdir + "/log_odd.pkl", 'wb') as fp:
         pkl.dump(SLBetaModel(model),fp)
 
     # NN
+    '''
     print('NN')
     model = nnBeta(train_X.shape[1])
     optimizer = Adam(model.parameters(), lr=1e-3)
@@ -97,8 +98,9 @@ def main(argv):
     print('test mse', mean_squared_error(test_y, pred_y))
     print('test mae', mean_absolute_error(test_y, pred_y))
 
-    with open(FLAGS.logdir + "/sl_beta_nn.pkl", 'wb') as fp:
+    with open(FLAGS.logdir + "/nn.pkl", 'wb') as fp:
         pkl.dump(SLBetaModel(model),fp)
+    '''
 
 if __name__ == '__main__':
     FLAGS = flags.FLAGS
