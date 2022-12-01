@@ -125,12 +125,12 @@ def main(argv):
             local_auc = agent.evaluate(agent.model, agent.dataloader)[0]
             logging.debug(f'agent {id} auc {auc:.5f} local_auc {local_auc:.5f}')
             aucs[id].append(auc)
-            avg_auc += auc
-            avg_local_auc += local_auc
             local_aucs[id].append(local_auc)
 
             # Log to wandb
             if FLAGS.wandb and not agent.dumb:
+                avg_auc += auc
+                avg_local_auc += local_auc
                 wandb.log({'auc/'+str(id): auc, 'local_auc/'+str(id): local_auc}, commit=False)
 
         if FLAGS.wandb:

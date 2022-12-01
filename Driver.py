@@ -73,8 +73,8 @@ class Driver:
             if FLAGS.decay_lr:
                 agent.decay_lr()
             avg_loss = agent.local_step(self.local_step_freq)
-            if FLAGS.wandb:
-                wandb.log({f'train/loss_{agent.id}': avg_loss}, commit=count == FLAGS.num_agents - 1)
+            if FLAGS.wandb and not agent.dumb:
+                wandb.log({f'train/loss_{agent.id}': avg_loss}, commit=False)
             count += 1
 
         logging.debug('Complete local step')
