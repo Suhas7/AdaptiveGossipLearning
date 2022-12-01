@@ -151,13 +151,25 @@ class GossipAgent:
         labels = []
         preds = []
         with torch.set_grad_enabled(self.combine_grad):
+            found = set()
             for data, label in tqdm(dataloader, desc=f"{self.id} Evaluating", leave=False):
                 pred = model(data.to(self.device))
                 loss += torch.nn.functional.cross_entropy(pred, label.to(self.device))
                 labels.append(label)
+                for lab in label.tolist():
+                    found.add(lab)
                 preds.append(pred)
-
+            
+            missing = list()
+            for i in range(FLAGS.num_class):
+                if i not in found: 
+                    missing.append(i)
+            missing = torch.as_tensor(missing)
+            labels.append(missing)
             labels = torch.cat(labels)
+            preds.append((missing+1) % FLAGS.num_class)
+            print(labels)
+            print(preds)
             preds = torch.argmax(torch.cat(preds), dim=1)
             auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(),
                                    average = None if vector else 'macro')
