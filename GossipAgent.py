@@ -28,10 +28,9 @@ scope: self
     my_other_auc: my auc on their data ->  MAYD
 '''
 
-
 class GossipAgent:
     def __init__(self, aid, dataset, alpha=.5, sigma=.8, beta_num=11,
-                 coord=[0,0], lr=1e-3, combine_grad=False, device='cpu', dummy=False, oracle_data=None,
+                 coord=[0,0], lr=1e-2, combine_grad=False, device='cpu', dummy=False, oracle_data=None,
                  dist=None, local_step_freq=1):
         # Agent metadata and hyper-parameters
         self.id = aid
@@ -41,7 +40,8 @@ class GossipAgent:
         self.dumb = dummy
         self.local_step_freq = local_step_freq
         self.beta_lr = lr
-        self.classifier_lr = 1e-2
+        self.default_lr = lr
+        self.classifier_lr = lr
         self.decay = .98
 
         self.ob_history = 1
@@ -169,6 +169,7 @@ class GossipAgent:
 
     def decay_lr(self):
         self.classifier_lr *= self.decay
+        self.classifier_lr = max(self.classifier_lr, self.default_lr/10)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.classifier_lr)
 
     def local_step(self, steps=1, model=None):

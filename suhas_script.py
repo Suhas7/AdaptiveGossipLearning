@@ -17,7 +17,6 @@ visited = set()
 count = 0
 for cfg in product(*params):
 	na,pd,nsk,dsk,nes,nti,bn,dlr = cfg
-	if bn[:3]=="fix": dlr=""
 	ld = f"./suhas_script/AGT{na}-{int(na*pd)}_IMG{nti}_SK{nsk}-{dsk}_{bn}"
 	if dlr!="":
 		ld+="-dlr"
