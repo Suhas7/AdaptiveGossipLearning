@@ -340,7 +340,6 @@ class GossipAgent:
         # train beta using self.calculate_total_reward()
         #reward = self.evaluate(self.model, self.oracle_dataloader)[0]
         reward = self.alpha * self.MAMD + (1 - self.alpha) * self.calculate_rpeer()
-        assert 0 <= reward <= 1
 
         self.buffer.append(((self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer, beta), reward))
 

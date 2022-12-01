@@ -15,11 +15,9 @@ logging.set_verbosity(logging.DEBUG)
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_integer('num_env_steps', None, lower_bound=2, help='')
-flags.mark_flag_as_required('num_env_steps')
+flags.DEFINE_integer('num_env_steps', 100, lower_bound=2, help='')
 flags.DEFINE_integer('n_train_img', 1000, lower_bound=2, help='')
-flags.DEFINE_string('logdir', None, help='')
-flags.mark_flag_as_required('logdir')
+flags.DEFINE_string('logdir', 'tmp', help='')
 flags.DEFINE_bool('wandb', True, help='')
 flags.DEFINE_string('comment', '', help='')
 
@@ -56,8 +54,8 @@ def setup():
             vector=FLAGS.vector_rp,
             decay=FLAGS.decay_lr
         )
-        group = "_".join([f"AGENTS{FLAGS.num_agents}-{FLAGS.num_dumb}",\
-                          f"IMG{FLAGS.n_train_img}",\
+        group = "_".join([f"AGENTS{FLAGS.num_agents}-{FLAGS.num_dumb}",
+                          f"IMG{FLAGS.n_train_img}",
                           f"SKEW{FLAGS.nskew}-{FLAGS.topweight/FLAGS.baseweight}"])
         tags = ('v' if FLAGS.vector_rp else "") + ('d' if FLAGS.decay_lr else "")
         name = f"{FLAGS.beta_net}-{tags}"
@@ -70,6 +68,8 @@ def setup():
         wandb.define_metric('comm/*', step_metric='round')
         wandb.define_metric('auc/*', step_metric='round')
         wandb.define_metric('local_auc/*', step_metric='round')
+        if FLAGS.logdir == 'tmp':
+            FLAGS.logdir = f'/exp/{group}/{name}'
 
 def main(argv):
     setup()
