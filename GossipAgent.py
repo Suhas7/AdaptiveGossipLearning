@@ -17,7 +17,7 @@ from supervised_learner import nnBeta
 FLAGS = flags.FLAGS
 flags.DEFINE_string('beta_net', 'classify', help='')
 flags.DEFINE_bool('oracle', True, help='')
-flags.DEFINE_bool('vector_rp', True, help='')
+flags.DEFINE_string('state_type', "default", help='')
 flags.DEFINE_string('sldir', '.', help='')
 
 '''
@@ -128,8 +128,7 @@ class GossipAgent:
             denom += scale
             result += self.YAMDs[key]*scale
         if denom == 0:
-            if not FLAGS.vector_rp:
-                return 0
+            return 0
         return result / denom
 
     def calculate_rpeer_vec(self):
@@ -140,11 +139,10 @@ class GossipAgent:
             denom += scale
             result += self.YAMDs[key]*scale
         if denom == 0:
-            if not FLAGS.vector_rp:
-                return 0
+            return 0
         return result / denom
 
-    def evaluate(self, model, dataloader, vector=False):
+    def evaluate(self, model, dataloader, vector="default"):
         # TODO: add option to sample from dataset to evaluate model
         model.eval()
         loss = 0
@@ -160,7 +158,7 @@ class GossipAgent:
             labels = torch.cat(labels)
             preds = torch.argmax(torch.cat(preds), dim=1)
             auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(),
-                                   average = None if vector else 'macro')
+                                   average = None if vector=="vector" else 'macro')
 
             if model is self.model:
                 self.MAMD_history.append(auc)
@@ -205,8 +203,8 @@ class GossipAgent:
     def stage1_comm_model(self, other):
         # logging.debug('stage 1')
         # Evaluate yourself
-        self.MAMD, self.loss = self.evaluate(self.model, self.dataloader)
-        other.MAMD, other.loss = other.evaluate(other.model, other.dataloader)
+        self.MAMD, self.loss = self.evaluate(self.model, self.dataloader,      vector=FLAGS.state_type)
+        other.MAMD, other.loss = other.evaluate(other.model, other.dataloader, vector=FLAGS.state_type)
         self.YAYD = other.MAMD
         other.YAYD = self.MAMD
         self.other_dist = other.dist
@@ -221,8 +219,8 @@ class GossipAgent:
     def stage2_eval_peer(self, other):
         # logging.debug('stage 2')
         # Evaluate peer model locally (to compute accuracy & gradient)
-        self.YAMD, self.peer_loss = self.evaluate(self.peer_model, self.dataloader,      vector=FLAGS.vector_rp)
-        other.YAMD, other.peer_loss = other.evaluate(other.peer_model, other.dataloader, vector=FLAGS.vector_rp)
+        self.YAMD, self.peer_loss = self.evaluate(self.peer_model, self.dataloader,      vector=FLAGS.state_type)
+        other.YAMD, other.peer_loss = other.evaluate(other.peer_model, other.dataloader, vector=FLAGS.state_type)
 
     def stage3_comm_aucs(self, other):
         # logging.debug('stage 3')
@@ -258,9 +256,16 @@ class GossipAgent:
         return self.evaluate(composite_model, self.oracle_dataloader)[0]
 
     def get_state(self):
-        if not FLAGS.vector_rp:
+        if FLAGS.state_type == "og_nv":
             return [self.id, self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer]
-        else:
+        elif FLAGS.state_type == "pairwise_nv":
+            dist_diff = self.dist - self.other_dist
+            return [self.id, self.MAMD, self.YAMD, self.MAYD, self.YAYD, sum(dist_diff)/FLAGS.num_class]
+        elif FLAGS.state_type == "combined_nv":
+            dist_diff = self.dist - self.other_dist
+            return [self.id, self.MAMD, self.YAMD, self.MAYD, self.YAYD, \
+                    self.calculate_rpeer(), self.other_rpeer, sum(dist_diff)/FLAGS.num_class]
+        elif FLAGS.state_type == "vector":
             #Vector state is: concat(my_auc_on_my_data - your_auc_on_my_data, \
              #my_auc_on_your_data - your_auc_on_your_data, my_dist-your_dist)
             return [self.id] \
@@ -268,13 +273,15 @@ class GossipAgent:
                    + list(self.YAYD - self.MAYD) \
                    + list(self.dist - self.other_dist) \
                    + [self.classifier_lr]
+        else:
+            raise NotImplementedError()
 
     def stage5_helper(self):
         """Given results of first 4 stages, update local model"""
         # Calculate beta value
         if len(self.buffer) < self.ob_history-1:
             action = torch.rand(1).squeeze(0) / 10
-        elif not FLAGS.vector_rp:
+        elif FLAGS.state_type != "vector":
             if self.ob_history > 1:
                 x = torch.concat([torch.tensor(ob) for ob, _ in self.buffer[-self.ob_history+1:]])
                 x = torch.concat([x, torch.tensor((self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer))]).float().to(self.device)
@@ -286,7 +293,6 @@ class GossipAgent:
             beta = np.random.choice(self.beta_action, p=action.detach().cpu().numpy())
         elif FLAGS.beta_net == 'ddpg':
             beta = action.item()
-            # beta = torch.tensor(1, device=self.device).float()
         elif FLAGS.beta_net == 'heuristic':
             beta = .5*(1+self.calculate_rpeer()-self.other_rpeer)
             beta = float(beta.mean())
@@ -317,7 +323,6 @@ class GossipAgent:
 
         # Combine models
         # Approach 1: combine gradients with beta-weight
-        #assert not self.combine_grad
         if self.combine_grad:
             self.optimizer.zero_grad()
             self.loss.backward()

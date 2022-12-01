@@ -51,7 +51,7 @@ def setup():
             env_mode=FLAGS.env_mode,
             grid_h=FLAGS.env_grid_h,
             grid_w=FLAGS.env_grid_w,
-            vector=FLAGS.vector_rp,
+            state_type=FLAGS.state_type,
             decay=FLAGS.decay_lr
         )
         group = "_".join([f"AGT{FLAGS.num_agents}-{FLAGS.num_dumb}",
