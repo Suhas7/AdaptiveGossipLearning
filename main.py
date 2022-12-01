@@ -60,7 +60,7 @@ def setup():
         tags = ('v' if FLAGS.vector_rp else "") + ('d' if FLAGS.decay_lr else "")
         name = f"{FLAGS.beta_net}-{tags}"
         if len(FLAGS.comment) != 0: name += '_' + FLAGS.comment
-        wandb.init(project='Gossip Learning', entity='gossips', group=group, job_type=tags, name=name,
+        wandb.init(project='gossip', entity='gossips', group=group, job_type=tags, name=name,
                    config=config)
         wandb.define_metric('round')
         wandb.define_metric('comm_loss/*', step_metric='round')
