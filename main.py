@@ -43,28 +43,24 @@ def setup():
     if FLAGS.wandb:
         config = dict(
             num_agent=FLAGS.num_agents,
-            num_image=FLAGS.n_train_img,
+            num_dumb=FLAGS.num_dumb,
+            nskew=FLAGS.nskew,
+            dskew=FLAGS.topweight/FLAGS.baseweight,
             num_class=FLAGS.num_class,
-            mode=FLAGS.agent_info_mode,
+            num_image=FLAGS.n_train_img,
             local_freq=FLAGS.local_step_freq,
             combine_grad=FLAGS.combine_grad,
             env_mode=FLAGS.env_mode,
             grid_h=FLAGS.env_grid_h,
             grid_w=FLAGS.env_grid_w,
-            oracle=FLAGS.oracle,
             vector=FLAGS.vector_rp,
             decay=FLAGS.decay_lr
         )
-        name = FLAGS.agent_info_mode + '_' + FLAGS.beta_net
-        if FLAGS.vector_rp:
-            name += '_v'
-        if FLAGS.decay_lr:
-            name += '_d'
-        if len(FLAGS.comment) != 0:
-            name += '_' + FLAGS.comment
-        job = str(FLAGS.num_agents) + '_agents'
-        if FLAGS.oracle:
-            job += '_oracle'
+        tags = ('v' if FLAGS.vector_rp else "") + ('d' if FLAGS.decay_lr else "")
+
+        name = "/".join([FLAGS.num_agents,FLAGS.num_dumb,tags,FLAGS.n_train_img,\
+                         FLAGS.nskew,FLAGS.topweight/FLAGS.baseweight,FLAGS.beta_net])
+        if len(FLAGS.comment) != 0: name += '_' + FLAGS.comment
         wandb.init(project='Gossip Learning', entity='gossips', group='no_move', job_type=job, name=name,
                    config=config)
         wandb.define_metric('round')
@@ -99,7 +95,6 @@ def main(argv):
 
     driver = Driver(
         num_agents      = FLAGS.num_agents, 
-        agent_info_mode = FLAGS.agent_info_mode, 
         local_step_freq = FLAGS.local_step_freq,
         n_train_img     = FLAGS.n_train_img,
         device          = device,

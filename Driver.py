@@ -7,15 +7,13 @@ from Environment import Environment
 from data_distribution import fetch_mnist_data, DataDistributor
 
 FLAGS = flags.FLAGS
-flags.DEFINE_string('agent_info_mode', None, help='')
-flags.mark_flag_as_required('agent_info_mode')
 flags.DEFINE_integer('local_step_freq', 5, lower_bound=0, help='')
 flags.DEFINE_bool('combine_grad', False, help='')
 flags.DEFINE_bool('decay_lr', False, help='')
 
 
 class Driver:
-    def __init__(self, num_agents, agent_info_mode, local_step_freq, n_train_img, device, oracle_data=None):
+    def __init__(self, num_agents, local_step_freq, n_train_img, device, oracle_data=None):
         # Hyperparameters
         self.local_step_freq = local_step_freq  # number of local steps between each peer step.
 
@@ -33,7 +31,7 @@ class Driver:
 			alpha, sigma
 		'''
         self.agents = dict()
-        agentConfig = getAgentConfig(agent_info_mode)
+        agentConfig = getAgentConfig()
         self.n_train_img = n_train_img
 
         for i in range(num_agents):
