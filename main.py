@@ -15,11 +15,9 @@ logging.set_verbosity(logging.DEBUG)
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_integer('num_env_steps', None, lower_bound=2, help='')
-flags.mark_flag_as_required('num_env_steps')
+flags.DEFINE_integer('num_env_steps', 100, lower_bound=2, help='')
 flags.DEFINE_integer('n_train_img', 1000, lower_bound=2, help='')
-flags.DEFINE_string('logdir', None, help='')
-flags.mark_flag_as_required('logdir')
+flags.DEFINE_string('logdir', 'tmp', help='')
 flags.DEFINE_bool('wandb', True, help='')
 flags.DEFINE_string('comment', '', help='')
 
@@ -43,27 +41,26 @@ def setup():
     if FLAGS.wandb:
         config = dict(
             num_agent=FLAGS.num_agents,
-            num_image=FLAGS.n_train_img,
+            num_dumb=FLAGS.num_dumb,
+            nskew=FLAGS.nskew,
+            dskew=FLAGS.topweight/FLAGS.baseweight,
             num_class=FLAGS.num_class,
-            mode=FLAGS.agent_info_mode,
+            num_image=FLAGS.n_train_img,
             local_freq=FLAGS.local_step_freq,
             combine_grad=FLAGS.combine_grad,
             env_mode=FLAGS.env_mode,
             grid_h=FLAGS.env_grid_h,
             grid_w=FLAGS.env_grid_w,
-            oracle=FLAGS.oracle,
-            vector=FLAGS.state_type,
+            state_type=FLAGS.state_type,
             decay=FLAGS.decay_lr
         )
-        name = FLAGS.agent_info_mode + '_' + FLAGS.beta_net + "_" + FLAGS.state_type
-        if FLAGS.decay_lr:
-            name += '_d'
-        if len(FLAGS.comment) != 0:
-            name += '_' + FLAGS.comment
-        job = str(FLAGS.num_agents) + '_agents'
-        if FLAGS.oracle:
-            job += '_oracle'
-        wandb.init(project='Gossip Learning', entity='gossips', group='no_move', job_type=job, name=name,
+        group = "_".join([f"AGENTS{FLAGS.num_agents}-{FLAGS.num_dumb}",
+                          f"IMG{FLAGS.n_train_img}",
+                          f"SKEW{FLAGS.nskew}-{FLAGS.topweight/FLAGS.baseweight}",
+                          f"STYP{FLAGS.state_type}"])
+        name = f"{FLAGS.beta_net}" + ("_D" if FLAGS.decay_lr else "")
+        if len(FLAGS.comment) != 0: name += '_' + FLAGS.comment
+        wandb.init(project='Gossip Learning', entity='gossips', group=group, name=name,
                    config=config)
         wandb.define_metric('round')
         wandb.define_metric('comm_loss/*', step_metric='round')
@@ -71,6 +68,8 @@ def setup():
         wandb.define_metric('comm/*', step_metric='round')
         wandb.define_metric('auc/*', step_metric='round')
         wandb.define_metric('local_auc/*', step_metric='round')
+        if FLAGS.logdir == 'tmp':
+            FLAGS.logdir = f'/exp/{group}/{name}'
 
 def main(argv):
     setup()
@@ -97,7 +96,6 @@ def main(argv):
 
     driver = Driver(
         num_agents      = FLAGS.num_agents, 
-        agent_info_mode = FLAGS.agent_info_mode, 
         local_step_freq = FLAGS.local_step_freq,
         n_train_img     = FLAGS.n_train_img,
         device          = device,
