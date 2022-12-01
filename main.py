@@ -67,7 +67,7 @@ def setup():
         wandb.define_metric('comm_loss/*', step_metric='round')
         wandb.define_metric('comm_r/*', step_metric='round')
         wandb.define_metric('comm/*', step_metric='round')
-        wandb.define_metric('avg/', step_metric='round')
+        wandb.define_metric('avg/*', step_metric='round')
         wandb.define_metric('auc/*', step_metric='round')
         wandb.define_metric('local_auc/*', step_metric='round')
         if FLAGS.logdir == 'tmp':
