@@ -70,7 +70,7 @@ def setup():
         wandb.define_metric('auc/*', step_metric='round')
         wandb.define_metric('local_auc/*', step_metric='round')
         if FLAGS.logdir == 'tmp':
-            FLAGS.logdir = f'/exp/{group}/{name}'
+            FLAGS.logdir = f'./exp/{group}/{name}'
 
 def main(argv):
     setup()
