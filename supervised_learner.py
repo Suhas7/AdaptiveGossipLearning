@@ -77,6 +77,7 @@ def main(argv):
     with open(FLAGS.logdir + f"/sl_{FLAGS.prefix}_log_odd.pkl", 'wb') as fp:
         pkl.dump(SLBetaModel(model),fp)
 
+    '''
     # NN
     print('NN')
     model = nnBeta(train_X.shape[1])
@@ -101,6 +102,7 @@ def main(argv):
 
     with open(FLAGS.logdir + f"sl_{FLAGS.prefix}_/nn.pkl", 'wb') as fp:
         pkl.dump(SLBetaModel(model),fp)
+    '''
 
 if __name__ == '__main__':
     FLAGS = flags.FLAGS
