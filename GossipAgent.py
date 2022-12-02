@@ -30,7 +30,7 @@ scope: self
 class GossipAgent:
     def __init__(self, aid, dataset, alpha=.5, sigma=.8, beta_num=11,
                  coord=[0,0], lr=1e-2, combine_grad=False, device='cpu', dummy=False, oracle_data=None,
-                 dist=None, local_step_freq=1):
+                 dist=None, local_step_freq=1, missing=None):
         # Agent metadata and hyper-parameters
         self.id = aid
         self.alpha = alpha
@@ -42,12 +42,14 @@ class GossipAgent:
         self.default_lr = lr
         self.classifier_lr = lr
         self.decay = .98
+        self.dumb_cache = None
 
         self.ob_history = 1
         self.buffer = []
 
         self.dataset = dataset
         self.dataloader = DataLoader(self.dataset, batch_size=64, shuffle=True)
+        self.missing = torch.as_tensor(missing)
 
         logging.debug(f'agent {self.id} data size {len(dataset)}')
         logging.debug(f'agent {self.id} step per epoch {len(self.dataloader)}')
@@ -139,6 +141,9 @@ class GossipAgent:
         loss = 0
         labels = []
         preds = []
+        if self.dumb and model == self.model and self.dumb_cache !=None:
+            auc, loss = self.dumb_cache
+            return auc, loss
         with torch.set_grad_enabled(self.combine_grad):
             found = set()
             for data, label in tqdm(dataloader, desc=f"{self.id} Evaluating", leave=False):
@@ -148,19 +153,17 @@ class GossipAgent:
                 for lab in label.tolist():
                     found.add(lab)
                 preds.append(pred)
-            missing = list()
-            for i in range(FLAGS.num_class):
-                if i not in found: 
-                    missing.append(i)
-            missing = torch.as_tensor(missing)
-            labels.append(missing)
+
+            labels.append(self.missing)
             labels = torch.cat(labels)
             preds = torch.argmax(torch.cat(preds), dim=1)
-            preds = torch.cat([preds,((missing+1) % FLAGS.num_class)])
+            preds = torch.cat([preds, ((self.missing + 1) % FLAGS.num_class).to(self.device)])
             auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(),
                                    average = None if state_type in ["vector","composite"] else 'macro')
             if model is self.model:
                 self.MAMD_history.append(auc)
+        if self.dumb and model == self.model and  self.dumb_cache==None:
+            self.dumb_cache = (auc,loss)
         return auc, loss
 
     def decay_lr(self):

@@ -61,9 +61,12 @@ class DataDistributor:
         # random generator for sampling
         rng = np.random.default_rng(seed=seed)
         all_idx = []
+        missing = []
         for i in range(self.num_classes):
             all_idx.append(rng.choice(self.buckets[i], size=size[i], replace=False))
+            if size[i] == 0:
+                missing.append(i)
 
         all_idx = np.concatenate(all_idx)
 
-        return Subset(self.dataset, all_idx)
+        return Subset(self.dataset, all_idx), missing

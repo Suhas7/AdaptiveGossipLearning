@@ -8,7 +8,7 @@ import pickle as pkl
 import absl
 
 FLAGS = flags.FLAGS
-flags.DEFINE_string('prefix', '', help='')
+flags.DEFINE_string('postfix', '', help='')
 
 import torch
 import torch.nn as nn
@@ -59,9 +59,10 @@ def main(argv):
     print('test mse', mean_squared_error(test_y, pred_y))
     print('test mae', mean_absolute_error(test_y, pred_y))
 
-    with open(FLAGS.logdir + f"/sl_{FLAGS.prefix}_linear.pkl", 'wb') as fp:
-        pkl.dump(SLBetaModel(model), fp)
+    with open(FLAGS.logdir + f"/sl_linear_{FLAGS.postfix}.pkl", 'wb') as fp:
+        pkl.dump(model, fp)
 
+    '''
     # log-odds-ratio
     print('log-odd-ratio')
     model = LinearRegression().fit(train_X, np.log(train_y / (1 - train_y)))
@@ -74,10 +75,9 @@ def main(argv):
     print('test mse', mean_squared_error(test_y, pred_y))
     print('test mae', mean_absolute_error(test_y, pred_y))
 
-    with open(FLAGS.logdir + f"/sl_{FLAGS.prefix}_log_odd.pkl", 'wb') as fp:
+    with open(FLAGS.logdir + f"/sl_{FLAGS.postfix}_log_odd.pkl", 'wb') as fp:
         pkl.dump(SLBetaModel(model),fp)
 
-    '''
     # NN
     print('NN')
     model = nnBeta(train_X.shape[1])
@@ -100,7 +100,7 @@ def main(argv):
     print('test mse', mean_squared_error(test_y, pred_y))
     print('test mae', mean_absolute_error(test_y, pred_y))
 
-    with open(FLAGS.logdir + f"sl_{FLAGS.prefix}_/nn.pkl", 'wb') as fp:
+    with open(FLAGS.logdir + f"sl_{FLAGS.postfix}_/nn.pkl", 'wb') as fp:
         pkl.dump(SLBetaModel(model),fp)
     '''
 
