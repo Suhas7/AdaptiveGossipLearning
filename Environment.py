@@ -6,10 +6,10 @@ import numpy as np
 from collections import defaultdict
 
 FLAGS = flags.FLAGS
-flags.DEFINE_integer('env_seed', 0, lower_bound=0, help='')
+flags.DEFINE_integer('env_seed', 0, lower_bound=0, help='seed for environment')
 flags.DEFINE_string('env_mode', 'grid', help='')
-flags.DEFINE_integer('env_grid_h', 3, lower_bound=1, help='')
-flags.DEFINE_integer('env_grid_w', 3, lower_bound=1, help='')
+flags.DEFINE_integer('env_grid_h', 3, lower_bound=1, help='env height')
+flags.DEFINE_integer('env_grid_w', 3, lower_bound=1, help='env width')
 
 class Environment:
     def __init__(self, agent_ids, agent_pos, seed=None, mode="grid", grid_h=10, grid_w=10):

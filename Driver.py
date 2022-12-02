@@ -7,9 +7,9 @@ from Environment import Environment
 from data_distribution import fetch_mnist_data, DataDistributor
 
 FLAGS = flags.FLAGS
-flags.DEFINE_integer('local_step_freq', 5, lower_bound=0, help='')
-flags.DEFINE_bool('combine_grad', False, help='')
-flags.DEFINE_bool('decay_lr', False, help='')
+flags.DEFINE_integer('local_step_freq', 5, lower_bound=0, help='# of local train steps between env steps')
+flags.DEFINE_bool('combine_grad', False, help='combine gradients, instead of parameters')
+flags.DEFINE_bool('decay_lr', False, help='decay the model LR by .98')
 
 
 class Driver:

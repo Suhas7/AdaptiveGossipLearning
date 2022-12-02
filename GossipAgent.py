@@ -15,10 +15,8 @@ from sklearn import metrics
 from supervised_learner import nnBeta
 
 FLAGS = flags.FLAGS
-flags.DEFINE_string('beta_net', 'classify', help='')
-flags.DEFINE_bool('oracle', True, help='')
-flags.DEFINE_string('state_type', "og", help='')
-flags.DEFINE_string('sldir', '.', help='')
+flags.DEFINE_string('beta_net', 'classify', help='Mechanism for beta selection')
+flags.DEFINE_string('state_type', "og", help='Mode of state representation')
 
 '''
 scope: self
@@ -78,7 +76,7 @@ class GossipAgent:
                 return 0
             self.beta_policy = _f
         elif FLAGS.beta_net.startswith('pretrain-'):
-            model_name = FLAGS.sldir + '/' + FLAGS.beta_net.lstrip('pretrain-') + '.pkl'
+            model_name = FLAGS.beta_net.lstrip('pretrain-') + '.pkl'
             with open(model_name,'rb') as fp:
                 self.beta_policy = pk.load(fp)
         else:

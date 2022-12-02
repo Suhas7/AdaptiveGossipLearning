@@ -9,14 +9,14 @@ from random import seed
 
 
 FLAGS = flags.FLAGS
-flags.DEFINE_integer('num_agents', None, lower_bound=1, help='')
+flags.DEFINE_integer('num_agents', None, lower_bound=1, help='# of total agents')
 flags.mark_flag_as_required('num_agents')
-flags.DEFINE_integer('num_dumb', 0, lower_bound=0, help='')
-flags.DEFINE_integer('nskew', 10, lower_bound=0, help='')
-flags.DEFINE_integer('topweight', 1, lower_bound=1, help='')
-flags.DEFINE_integer('baseweight', 1, lower_bound=0, help='')
-flags.DEFINE_integer('num_class', 10, lower_bound=1, help='')
-flags.DEFINE_integer('seed', 0, help='')
+flags.DEFINE_integer('num_dumb', 0, lower_bound=0, help='# of non-learning agents')
+flags.DEFINE_integer('nskew', 10, lower_bound=0, help='# of overrepresented classes')
+flags.DEFINE_integer('topweight', 1, lower_bound=1, help='scale of class skew (e.g. 5x overrepresented)')
+flags.DEFINE_integer('baseweight', 1, lower_bound=0, help='scale of non-skewed classes')
+flags.DEFINE_integer('num_class', 10, lower_bound=1, help='# of target classes')
+flags.DEFINE_integer('seed', 0, help='random seed')
 
 @dataclass
 class AgentConfig:

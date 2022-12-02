@@ -15,11 +15,11 @@ logging.set_verbosity(logging.INFO)
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_integer('num_env_steps', 100, lower_bound=2, help='')
-flags.DEFINE_integer('n_train_img', 1000, lower_bound=2, help='')
+flags.DEFINE_integer('num_env_steps', 100, lower_bound=2, help='# of environment steps')
+flags.DEFINE_integer('n_train_img', 1000, lower_bound=2, help='# of local images available for training')
 flags.DEFINE_string('logdir', 'tmp', help='')
-flags.DEFINE_bool('wandb', True, help='')
-flags.DEFINE_string('comment', '', help='')
+flags.DEFINE_bool('wandb', True, help='use --nowandb to not use wandb')
+flags.DEFINE_string('comment', '', help='message for tracking')
 
 import torch.nn as nn
 import torch
