@@ -130,19 +130,11 @@ class GossipAgent:
             return 0
         return result / denom
 
-    def calculate_rpeer_vec(self):
-        result = 0
-        denom = 0
-        for key in self.YAMDs.keys():
-            scale = (self.sigma ** self.peer_ages[key])
-            denom += scale
-            result += self.YAMDs[key]*scale
-        if denom == 0:
-            return 0
-        return result / denom
-
     def evaluate(self, model, dataloader, state_type="default"):
         # TODO: add option to sample from dataset to evaluate model
+        if model == self.model and self.dumb:
+            return .01 + metrics.f1_score(list(range(10)), [10] + list(range(9)),
+                                   average = None if state_type in ["vector","composite"] else 'macro'), 1
         model.eval()
         loss = 0
         labels = []
