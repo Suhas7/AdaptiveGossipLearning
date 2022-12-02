@@ -266,11 +266,14 @@ class GossipAgent:
             return [self.id, self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer]
         elif FLAGS.state_type == "pairwise_nv":
             dist_diff = self.dist - self.other_dist
-            return [self.id, self.MAMD, self.YAMD, self.MAYD, self.YAYD, sum(dist_diff)/FLAGS.num_class]
+            return [self.id, self.MAMD, self.YAMD, self.MAYD, self.YAYD, sum(abs(dist_diff))/FLAGS.num_class,sum(dist_diff**2)/FLAGS.num_class]
         elif FLAGS.state_type == "composite":
             dist_diff = self.dist - self.other_dist
             return [self.id, self.MAMD, self.YAMD, self.MAYD, self.YAYD, \
-                    self.calculate_rpeer(), self.other_rpeer, sum(dist_diff)/FLAGS.num_class, self.classifier_lr]
+                    self.calculate_rpeer(), self.other_rpeer, \
+                    sum(abs(dist_diff))/FLAGS.num_class,sum(dist_diff**2)/FLAGS.num_class,\
+                    metrics.mutual_info_score(self.dist,self.other_dist),\
+                    self.classifier_lr]
         elif FLAGS.state_type == "vector":
             #Vector state is: concat(my_auc_on_my_data - your_auc_on_my_data, \
              #my_auc_on_your_data - your_auc_on_your_data, my_dist-your_dist)
