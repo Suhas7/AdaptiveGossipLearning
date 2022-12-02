@@ -43,6 +43,7 @@ class GossipAgent:
         self.default_lr = lr
         self.classifier_lr = lr
         self.decay = .98
+        self.dumb_cache = None
 
         self.ob_history = 1
         self.buffer = []
@@ -151,6 +152,9 @@ class GossipAgent:
         loss = 0
         labels = []
         preds = []
+        if self.dumb and model == self.model and self.dumb_cache !=None:
+            auc, loss = self.dumb_cache
+            return auc, loss
         with torch.set_grad_enabled(self.combine_grad):
             found = set()
             for data, label in tqdm(dataloader, desc=f"{self.id} Evaluating", leave=False):
@@ -169,6 +173,8 @@ class GossipAgent:
                                    average = None if vector else 'macro')
             if model is self.model:
                 self.MAMD_history.append(auc)
+        if self.dumb and model == self.model and  self.dumb_cache==None:
+            self.dumb_cache = (auc,loss)
         return auc, loss
 
     def decay_lr(self):
