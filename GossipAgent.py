@@ -261,7 +261,7 @@ class GossipAgent:
         composite_model = MnistMlp().to(self.device)
         composite_model.load_state_dict(state)
         # Take a local step with the composite model
-        self.local_step(self.local_step_freq, model=composite_model)
+        # self.local_step(self.local_step_freq, model=composite_model)
         # Compute and return AUC on oracle dataset
         return self.evaluate(composite_model, self.oracle_dataloader)[0]
 
