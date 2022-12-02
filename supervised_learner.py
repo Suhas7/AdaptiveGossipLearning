@@ -32,6 +32,8 @@ class nnBeta(nn.Module):
 class SLBetaModel:
     def __init__(self, model, type="linear"):
         self.model = model
+        self.type = type
+
     def predict(self, val):
         val = self.model.predict(val)
         if self.type == "logistic": val = self.sigmoid(val)
