@@ -5,4 +5,5 @@ from supervised_learner import SLBetaModel
 for fname in sys.argv[1:]:
 	with open(fname,'rb') as fd:
 		mod = pk.load(fd)
-	print(mod.get_weights())
+	print(fname)
+	mod.get_weights()
