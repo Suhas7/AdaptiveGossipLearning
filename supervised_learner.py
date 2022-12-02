@@ -63,7 +63,7 @@ def main(argv):
     print('test mae', mean_absolute_error(test_y, pred_y))
     model = LinearRegression().fit(X,y)
     with open(FLAGS.logdir + f"/linear_{FLAGS.postfix}.pkl", 'wb') as fp:
-        pkl.dump(model, fp)
+        pkl.dump(SLBetaModel(model), fp)
 
     '''
     # log-odds-ratio
