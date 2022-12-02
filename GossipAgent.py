@@ -245,7 +245,8 @@ class GossipAgent:
         if not self.dumb:
             self.stage5_helper()
         if not other.dumb:
-            other.stage5_helper()
+            precomp = self.precomp if FLAGS.beta_net.startswith("cheat-") else None
+            other.stage5_helper(precomp=precomp)
 
     def eval_beta(self, beta):
         state = self.model.state_dict()
@@ -280,7 +281,7 @@ class GossipAgent:
         else:
             raise NotImplementedError()
 
-    def stage5_helper(self):
+    def stage5_helper(self,precomp = None):
         """Given results of first 4 stages, update local model"""
         # Calculate beta value
         if len(self.buffer) < self.ob_history-1:
@@ -301,11 +302,15 @@ class GossipAgent:
             beta = .5*(1+self.calculate_rpeer()-self.other_rpeer)
             beta = float(beta.mean())
         elif FLAGS.beta_net.startswith('cheat-'):
-            step = float(FLAGS.beta_net.strip('cheat-'))
-            n = math.floor(1 / step) + 1
-            candidate = np.arange(n) * step
-            look_ahead = list(map(self.eval_beta, candidate.tolist()))
-            beta = candidate[np.argmax(look_ahead)]
+            if precomp==None:
+                step = float(FLAGS.beta_net.strip('cheat-'))
+                n = math.floor(1 / step) + 1
+                candidate = np.arange(n) * step
+                look_ahead = list(map(self.eval_beta, candidate.tolist()))
+                beta = candidate[np.argmax(look_ahead)]
+                self.precomp = beta
+            else:
+                beta = 1 - precomp
 
             # beta = max(candidate, key=lambda b: self.eval_beta(b))
             # Append state, beta onto "data.csv" for future regression
