@@ -60,7 +60,7 @@ def main(argv):
     print('test mae', mean_absolute_error(test_y, pred_y))
 
     with open(FLAGS.logdir + f"/sl_{FLAGS.prefix}_linear.pkl", 'wb') as fp:
-        pkl.dump(SLBetaModel(model), fp)
+        pkl.dump(model, fp)
 
     # log-odds-ratio
     print('log-odd-ratio')
