@@ -31,7 +31,7 @@ scope: self
 class GossipAgent:
     def __init__(self, aid, dataset, alpha=.5, sigma=.8, beta_num=11,
                  coord=[0,0], lr=1e-2, combine_grad=False, device='cpu', dummy=False, oracle_data=None,
-                 dist=None, local_step_freq=1):
+                 dist=None, local_step_freq=1, missing=None):
         # Agent metadata and hyper-parameters
         self.id = aid
         self.alpha = alpha
@@ -49,6 +49,7 @@ class GossipAgent:
 
         self.dataset = dataset
         self.dataloader = DataLoader(self.dataset, batch_size=64, shuffle=True)
+        self.missing = torch.as_tensor(missing)
 
         logging.debug(f'agent {self.id} data size {len(dataset)}')
         logging.debug(f'agent {self.id} step per epoch {len(self.dataloader)}')
@@ -159,15 +160,11 @@ class GossipAgent:
                 for lab in label.tolist():
                     found.add(lab)
                 preds.append(pred)
-            missing = list()
-            for i in range(FLAGS.num_class):
-                if i not in found: 
-                    missing.append(i)
-            missing = torch.as_tensor(missing)
-            labels.append(missing)
+
+            labels.append(self.missing)
             labels = torch.cat(labels)
             preds = torch.argmax(torch.cat(preds), dim=1)
-            preds = torch.cat([preds,((missing+1) % FLAGS.num_class)])
+            preds = torch.cat([preds, ((self.missing + 1) % FLAGS.num_class).to(self.device)])
             auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(),
                                    average = None if vector else 'macro')
             if model is self.model:

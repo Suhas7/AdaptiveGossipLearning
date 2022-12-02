@@ -35,9 +35,10 @@ class Driver:
         self.n_train_img = n_train_img
 
         for i in range(num_agents):
+            data, missing = self.distributor.distribute_data(agentConfig.dists[i], self.n_train_img, i)
             self.agents[i] = GossipAgent(
                 aid=i,
-                dataset=self.distributor.distribute_data(agentConfig.dists[i], self.n_train_img, i),
+                dataset=data,
                 alpha=agentConfig.alphas[i],
                 sigma=agentConfig.sigmas[i],
                 coord=agentConfig.start_coords[i],
@@ -46,7 +47,8 @@ class Driver:
                 dummy=agentConfig.dummy[i],
                 oracle_data=oracle_data,
                 dist=agentConfig.dists[i],
-                local_step_freq=local_step_freq
+                local_step_freq=local_step_freq,
+                missing=missing
             )
             logging.debug('Driver: agents {} created'.format(i))
 
@@ -101,8 +103,4 @@ class Driver:
     # agentA.save_models(self.episode_count)
     # agentB.save_models(self.episode_count)
 
-# def load_agent_data(self, int_distribution):
-# TODO: we're creating 1 distributor for 1 agent now, maybe we should use 1 distributor for all agents
-# 	full_train, full_test = fetch_mnist_data()
-# 	train_distributor = DataDistributor(full_train, num_classes=FLAGS.num_class)
-# 	return train_distributor.distribute_data(int_distribution, self.n_train_img)
+
