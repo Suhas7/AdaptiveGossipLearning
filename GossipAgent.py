@@ -17,6 +17,7 @@ from supervised_learner import nnBeta
 FLAGS = flags.FLAGS
 flags.DEFINE_string('beta_net', 'classify', help='Mechanism for beta selection')
 flags.DEFINE_string('state_type', "og", help='Mode of state representation')
+flags.DEFINE_bool('append_cheat', False, help='Mode of state representation')
 
 '''
 scope: self
@@ -92,7 +93,7 @@ class GossipAgent:
             self.beta_critic_fp = "./beta-critic/agent_{}/".format(aid)
         self.model_fp = "./models/agent_{}/".format(aid)
         self.log_fp = "./logs/agent_{}/".format(aid)
-        if aid == 0:
+        if aid == 0 and not FLAGS.append_cheat:
             with open(FLAGS.logdir + '/data.csv', 'w') as fp:
                 fp.write("")
 
