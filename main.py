@@ -121,6 +121,8 @@ def main(argv):
 
         # Test each agent model against test dataset
         for id, agent in driver.agents.items():
+            if agent.dumb:
+                continue
             auc = agent.evaluate(agent.model, test_dataloader)[0]
             local_auc = agent.evaluate(agent.model, agent.dataloader)[0]
             logging.debug(f'agent {id} auc {auc:.5f} local_auc {local_auc:.5f}')
@@ -128,7 +130,7 @@ def main(argv):
             local_aucs[id].append(local_auc)
 
             # Log to wandb
-            if FLAGS.wandb and not agent.dumb:
+            if FLAGS.wandb:
                 avg_auc += auc
                 avg_local_auc += local_auc
                 wandb.log({'auc/'+str(id): auc, 'local_auc/'+str(id): local_auc}, commit=False)
