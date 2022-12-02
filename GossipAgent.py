@@ -158,7 +158,7 @@ class GossipAgent:
             preds = torch.argmax(torch.cat(preds), dim=1)
             preds = torch.cat([preds,((missing+1) % FLAGS.num_class)])
             auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(),
-                                   average = None if state_type=="vector" else 'macro')
+                                   average = None if state_type in ["vector","composite"] else 'macro')
             if model is self.model:
                 self.MAMD_history.append(auc)
         return auc, loss
@@ -252,7 +252,8 @@ class GossipAgent:
         self.local_step(self.local_step_freq, model=composite_model)
         # Compute and return AUC on oracle dataset
         return self.evaluate(composite_model, self.oracle_dataloader)[0]
-
+    def average(self,x):
+        return sum(x)/len(x)
     def get_state(self):
         if FLAGS.state_type == "og_nv":
             return [self.id, self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer]
@@ -261,8 +262,8 @@ class GossipAgent:
             return [self.id, self.MAMD, self.YAMD, self.MAYD, self.YAYD, sum(abs(dist_diff))/FLAGS.num_class,sum(dist_diff**2)/FLAGS.num_class]
         elif FLAGS.state_type == "composite":
             dist_diff = self.dist - self.other_dist
-            return [self.id, self.MAMD, self.YAMD, self.MAYD, self.YAYD, \
-                    self.calculate_rpeer(), self.other_rpeer, \
+            return [self.id, self.average(self.MAMD), self.average(self.YAMD), self.average(self.MAYD), self.average(self.YAYD), \
+                    self.average(self.calculate_rpeer()), self.average(self.other_rpeer), \
                     sum(abs(dist_diff))/FLAGS.num_class,sum(dist_diff**2)/FLAGS.num_class,\
                     metrics.mutual_info_score(self.dist,self.other_dist),\
                     self.classifier_lr]
@@ -282,7 +283,7 @@ class GossipAgent:
         # Calculate beta value
         if len(self.buffer) < self.ob_history-1:
             action = torch.rand(1).squeeze(0) / 10
-        elif FLAGS.state_type != "vector":
+        elif FLAGS.state_type not in ["vector","composite"]:
             if self.ob_history > 1:
                 x = torch.concat([torch.tensor(ob) for ob, _ in self.buffer[-self.ob_history+1:]])
                 x = torch.concat([x, torch.tensor((self.MAMD, self.YAMD, self.calculate_rpeer(), self.other_rpeer))]).float().to(self.device)
