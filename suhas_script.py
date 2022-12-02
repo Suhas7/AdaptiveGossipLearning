@@ -1,12 +1,14 @@
 from itertools import product
-
-params = [[8,25,70],  #NUM_AGENTS
+import os
+params = [[10,50,100],  #NUM_AGENTS
 		  [.2,.5,.8], #%_DUMB
-		  [10,4], #NUM_SKEW_CLASSES (balance,half unbalance)
+		  [10,4], #NUM_SKEW_CLASSES (balance,40% unbalance)
 		  [15], # topweight
 		  [400], # num env steps
 		  [10,50], #num_train_images
-		  ["fix-0.5","fix-1.0","heuristic","pretrain-linear_cheat20-.04"]]  # beta net
+		  ["fix-0.5","fix-1.0","heuristic",\
+		  	#"pretrain-old_sllr.pkl --state_type vector",\
+		  	"pretrain-new_sllr.pkl --state_type composite"]]  # beta net
 #		  ["--decay_lr",""]]  #Whether to decay LR or not
 
 cmds = list()
@@ -18,6 +20,7 @@ for cfg in product(*params):
 	bn2 = bn.strip("pretrain-")
 	ld = f"./exp/AGT{na}-{int(na*pd)}_IMG{nti}_SK{nsk}-{dsk}_{bn2}"
 	if ld in visited: continue
+	if os.path.isdir(ld): continue
 	visited.add(ld)
 	count += 1
 	cmds.append(f"mkdir -p {ld}")
