@@ -1,0 +1,11 @@
+Oracle Data
+    D1: 20 good, unbalanced, 1k images, beta 0.04, 100 steps
+    D2: 10 good, 10 dumb, balanced, 1k images, beta 0.04, 100 steps
+    D3: 3 good, 1 dumb, unbalanced, 1k images, beta 0.04, 100 steps
+    D4: 3 good, 1 dumb, unbalanced, 1k images, beta 0.04, 100 steps, decay lr
+    D5: 10 good, 10 dumb, balanced, 1k images, beta 0.04, 300 steps, composite state
+    D6: 16 good, 4 dumb, unbalanced, 1k images, beta 0.04, 300 steps, composite state
+
+LR Model
+    M1: train on D1 + D2
+    M2: train on D3 + D4

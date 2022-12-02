@@ -18,7 +18,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('beta_net', 'classify', help='')
 flags.DEFINE_bool('oracle', True, help='')
 flags.DEFINE_bool('vector_rp', True, help='')
-flags.DEFINE_string('sldir', '.', help='')
+flags.DEFINE_string('sldir', 'oracle', help='')
 
 '''
 scope: self
