@@ -60,7 +60,7 @@ def main(argv):
     pred_y = np.clip(pred_y, 0, 1)
     print('test mse', mean_squared_error(test_y, pred_y))
     print('test mae', mean_absolute_error(test_y, pred_y))
-
+    model = LinearRegression().fit(X,y)
     with open(FLAGS.logdir + f"/sl_linear_{FLAGS.postfix}.pkl", 'wb') as fp:
         pkl.dump(model, fp)
 
