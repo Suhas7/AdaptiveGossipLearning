@@ -56,7 +56,7 @@ def gen_distribution(distributions=None):
             dummy.append(d[1] == 0)
     with open(f'{FLAGS.logdir}/class_distribution.txt', 'w') as f:
         for i, w in enumerate(weights):
-            print(f'Agent {i}, dumb {dummy[i]}', end=' ', file=f)
+            print(f'Agent {i}, {"dumb" if dummy[i] else "smart"}', end=' ', file=f)
             print([f'{i:.3f}' for i in w.tolist()], file=f)
 
     return AgentConfig(

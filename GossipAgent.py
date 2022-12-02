@@ -167,7 +167,7 @@ class GossipAgent:
             preds = torch.argmax(torch.cat(preds), dim=1)
             preds = torch.cat([preds,((missing+1) % FLAGS.num_class)])
             auc = metrics.f1_score(labels.cpu().numpy(), preds.detach().cpu().numpy(),
-                                   average = None if vector else 'macro')
+                                   average = None if state_type=="vector" else 'macro')
             if model is self.model:
                 self.MAMD_history.append(auc)
         return auc, loss
@@ -194,7 +194,6 @@ class GossipAgent:
                 pred = model(data.to(self.device))
                 loss = torch.nn.functional.cross_entropy(pred, label.to(self.device))
                 total_loss += loss.item()
-
                 optim.zero_grad()
                 loss.backward()
                 optim.step()
@@ -210,8 +209,8 @@ class GossipAgent:
     def stage1_comm_model(self, other):
         # logging.debug('stage 1')
         # Evaluate yourself
-        self.MAMD, self.loss = self.evaluate(self.model, self.dataloader,      vector=FLAGS.vector_rp)
-        other.MAMD, other.loss = other.evaluate(other.model, other.dataloader, vector=FLAGS.vector_rp)
+        self.MAMD, self.loss = self.evaluate(self.model, self.dataloader,      state_type=FLAGS.state_type)
+        other.MAMD, other.loss = other.evaluate(other.model, other.dataloader, state_type=FLAGS.state_type)
         self.YAYD = other.MAMD
         other.YAYD = self.MAMD
         self.other_dist = other.dist
@@ -268,7 +267,7 @@ class GossipAgent:
         elif FLAGS.state_type == "pairwise_nv":
             dist_diff = self.dist - self.other_dist
             return [self.id, self.MAMD, self.YAMD, self.MAYD, self.YAYD, sum(dist_diff)/FLAGS.num_class]
-        elif FLAGS.state_type == "combined_nv":
+        elif FLAGS.state_type == "composite":
             dist_diff = self.dist - self.other_dist
             return [self.id, self.MAMD, self.YAMD, self.MAYD, self.YAYD, \
                     self.calculate_rpeer(), self.other_rpeer, sum(dist_diff)/FLAGS.num_class]
