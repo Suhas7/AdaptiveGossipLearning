@@ -29,10 +29,12 @@ class nnBeta(nn.Module):
         return self.forward(torch.as_tensor(x).float())
 
 class SLBetaModel:
-    def __init__(self, model):
+    def __init__(self, model, type="linear"):
         self.model = model
     def predict(self, val):
-        return self.sigmoid(self.model.predict(val))
+        val = self.model.predict(val)
+        if self.type == "logistic": val = self.sigmoid(val)
+        return np.clip(val,0,1)
     def sigmoid(self, x):
         try:
             x = x.cpu().detach().numpy()
