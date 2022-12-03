@@ -37,6 +37,46 @@ class nnBeta(nn.Module):
     def predict(self, x):
         return self.forward(torch.as_tensor(x).float())
 
+class customLayer(nn.Module):
+    def __init__(self, in_dim):
+        super().__init__()
+        self.in_dim = in_dim
+        self.params = nn.Parameter(.5 * torch.ones(7))
+        self.bias = nn.Parameter(torch.zeros(2))
+
+    def forward(self, x):
+        accs = []
+        for i in range(self.in_dim):
+            for j in range(self.in_dim):
+                A1 = x[:, i]     #perf gap on MD_i
+                A2 = x[:, j]     #perf gap on MD_j
+                A3 = x[:, self.in_dim+i]  #perf gap on YD_i
+                A4 = x[:, self.in_dim+j]  #perf gap on YD_j
+                D1 = x[:, 2 * self.in_dim + i] # difference in freq for i
+                D2 = x[:, 2 * self.in_dim + j] # difference in freq for j
+                info = [A1,A2,A3,A4,D1,D2]
+                for k in range(len(info)):
+                    accs.append(torch.tanh(info[k]*self.params[k] + self.bias[0]) * self.params[-1] + self.bias[1])
+        return torch.vstack(accs).permute(1, 0)
+
+class customNNBeta(nn.Module):
+    def __init__(self, in_dim, num_labels):
+        super().__init__()
+        self.layer1 = customLayer(num_labels)
+#        self.layer2 = customLayer(num_labels)
+
+    def forward(self, x):
+#        print(x.size())
+        x = self.layer1(x)
+#        print(x.size())
+#        x = self.layer2(x)
+#        print(x.size())
+
+        return torch.sigmoid(x.sum(dim=1))
+
+    def predict(self, x):
+        return self.forward(torch.as_tensor(x).float())
+
 def setup():
     if FLAGS.wandb:
         config = dict(
