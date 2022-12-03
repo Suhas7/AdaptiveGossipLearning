@@ -103,7 +103,7 @@ def setup():
         net = FLAGS.beta_net.replace("pretrain-", "")
         job = f"{net}-{tags}"
         seed = str(FLAGS.seed)
-        wandb.init(project='gossip', entity='gossips', group=group, job_type=job, name=str(FLAGS.seed),
+        wandb.init(project='gossip', entity='gossips', group=group, job_type=job, name=job+"-"+str(FLAGS.seed),
                    config=config)
         wandb.define_metric('round')
         wandb.define_metric('comm_loss/*', step_metric='round')
