@@ -1,20 +1,20 @@
 from itertools import product
 import os
-params = [[10],  #NUM_AGENTS
-                  [.2, .5, .8], #%_DUMB
-                  [4], #NUM_SKEW_CLASSES (balance,40% unbalance)
-                  [15], # topweight
-                  [125], # num env steps
-                  [50], #num_train_images
-                  ["pretrain-linear_d13-f",
-                      "pretrain-linear_old-f",
-                      #"heuristic", "heuristic-2",
-                    #"fix-0.5","fix-1.0","heuristic",\
-                        #"pretrain-old_sllr.pkl --state_type vector",\
-                        #"pretrain-new_sllr.pkl --state_type composite"]   # beta net
-                  ],
-                  [1, 2]
-                 ]
+params = [[20],         #NUM_AGENTS
+          [0,.4],       #%_DUMB
+          [10,4],          #NUM_SKEW_CLASSES (balance,40% unbalance)
+          [15],         # topweight
+          [100],        # num env steps
+          [30],         #num_train_images
+          [   "fix-.5", "fix-1","ddpg"
+              "heuristic", "heuristic-3",
+              "cheat-.1",
+            #"fix-0.5","fix-1.0","heuristic",\
+                #"pretrain-old_sllr.pkl --state_type vector",\
+                #"pretrain-new_sllr.pkl --state_type composite"]   # beta net
+          ],
+          [0]
+         ]
 
 cmds = list()
 cmds.append("mkdir -p exp")
@@ -25,7 +25,7 @@ for cfg in product(*params):
         bn2 = bn.strip("pretrain-")
         ld = f"./exp/AGT{na}-{int(na*pd)}_IMG{nti}_SK{nsk}-{dsk}_{bn2}-{seed}"
         if ld in visited: continue
-        #if os.path.isdir(ld): continue
+        if os.path.isdir(ld): continue
         visited.add(ld)
         count += 1
         cmds.append(f"mkdir -p {ld}")
