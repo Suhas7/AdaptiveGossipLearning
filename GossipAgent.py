@@ -80,7 +80,7 @@ class GossipAgent:
                 return 0
             self.beta_policy = _f
         elif FLAGS.beta_net.startswith('pretrain-'):
-            model_name = FLAGS.sldir + '/' + FLAGS.beta_net.lstrip('pretrain-') + '.pkl'
+            model_name = FLAGS.sldir + '/' + FLAGS.beta_net.replace('pretrain-', '') + '.pkl'
             with open(model_name,'rb') as fp:
                 self.beta_policy = pk.load(fp)
         else:
@@ -321,7 +321,10 @@ class GossipAgent:
         elif FLAGS.beta_net.startswith('pretrain-'):
             state = np.array(self.get_state())[1:].reshape(1, -1)
             beta = self.beta_policy.predict(state)  # TODO test to make sure this is correct
-            beta = float(beta)
+            if torch.is_tensor(beta):
+                beta = beta.detach().cpu().item()
+            else:
+                beta = float(beta)
             logging.debug(f'agent {self.id} beta {beta}')
         else:
             beta = self.beta_policy()

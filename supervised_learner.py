@@ -77,6 +77,10 @@ class SLBetaModel:
 
     def predict(self, val):
         val = self.model.predict(val)
+        try:
+            val = val.cpu().detach().numpy()
+        except:
+            pass
         if self.type == "logistic": val = self.sigmoid(val)
         return np.clip(val,0,1)
     def sigmoid(self, x):
@@ -149,7 +153,7 @@ def main(argv):
             print(epoch, loss.item())
     
 
-    with open(FLAGS.logdir + f"/nn_{FLAGS.postfix}.pkl", 'wb') as fp:
+    with open(FLAGS.logdir + f"/neural_{FLAGS.postfix}.pkl", 'wb') as fp:
         pkl.dump(SLBetaModel(model),fp)
 
     '''

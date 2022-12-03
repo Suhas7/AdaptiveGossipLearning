@@ -100,7 +100,7 @@ def setup():
                           f"SKW{FLAGS.nskew}-{FLAGS.topweight/FLAGS.baseweight}",
 			  ]) + FLAGS.comment
         tags = ('v' if FLAGS.vector_rp else "") + ('d' if FLAGS.decay_lr else "") + str(FLAGS.seed)
-        net = FLAGS.beta_net.strip("pretrain-")
+        net = FLAGS.beta_net.replace("pretrain-", "")
         name = f"{net}-{tags}"
 #        if len(FLAGS.comment) != 0: name += '_' + FLAGS.comment
         wandb.init(project='gossip', entity='gossips', group=group, job_type=tags, name=name,
