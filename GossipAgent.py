@@ -301,6 +301,9 @@ class GossipAgent:
             beta = .5 + .1 * (sum(self.MAMD - self.YAMD) + sum(self.MAYD - self.YAYD))
         elif FLAGS.beta_net == 'heuristic-2':
             beta = .5 + .1005 * (sum(self.MAMD - self.YAMD) + sum(self.MAYD - self.YAYD))
+        elif FLAGS.beta_net == 'heuristic-3':
+            beta = .5 + .1 * (sum(self.MAMD - self.YAMD) + sum(self.MAYD - self.YAYD))
+            beta -= .05 * sum(abs(self.dist - self.other_dist))
         elif FLAGS.beta_net.startswith('cheat-'):
             step = float(FLAGS.beta_net.strip('cheat-'))
             n = math.floor(1 / step) + 1
