@@ -29,6 +29,32 @@ class nnBeta(nn.Module):
     def predict(self, x):
         return self.forward(torch.as_tensor(x).float())
 
+class customNNBeta(nn.Module):
+    def __init__(self, in_dim, num_labels):
+        super().__init__()
+        self.num_labels = num_labels
+        self.params = nn.Parameter(.5 * torch.ones(7))
+        self.bias = nn.Parameter(torch.zeros(2))
+
+    def forward(self, x):
+        acc = 0
+        for i in range(self.num_labels):
+            for j in range(self.num_labels):
+                A1 = x[i]     #perf gap on MD_i
+                A2 = x[j]     #perf gap on MD_j
+                A3 = x[self.num_labels+i]  #perf gap on YD_i
+                A4 = x[self.num_labels+j]  #perf gap on YD_j
+                D1 = x[2 * self.num_labels + i] # difference in freq for i
+                D2 = x[2 * self.num_labels + j] # difference in freq for j
+                info = [A1,A2,A3,A4,D1,D2]
+                for k in range(len(info)):
+                    acc += torch.tanh(info[k]*self.params[k] + self.bias[0]) * self.params[-1] + self.bias[1]
+        return torch.sigmoid(acc)
+
+    def predict(self, x):
+        return self.forward(torch.as_tensor(x).float())
+
+
 class SLBetaModel:
     def __init__(self, model, type="linear"):
         self.model = model
@@ -67,12 +93,12 @@ def main(argv):
     print('test mse', mean_squared_error(test_y, pred_y))
     print('test mae', mean_absolute_error(test_y, pred_y))
     model = LinearRegression().fit(X,y)
-    with open(FLAGS.logdir + f"/linear_{FLAGS.postfix}.pkl", 'wb') as fp:
-        pkl.dump(SLBetaModel(model), fp)
+   # with open(FLAGS.logdir + f"/linear_{FLAGS.postfix}.pkl", 'wb') as fp:
+   #     pkl.dump(SLBetaModel(model), fp)
 
     # NN
     print('NN')
-    model = nnBeta(train_X.shape[1])
+    model = customNNBeta(train_X.shape[1], 10)
     optimizer = Adam(model.parameters(), lr=1e-3)
     criterion = nn.MSELoss()
     for epoch in range(1000):
