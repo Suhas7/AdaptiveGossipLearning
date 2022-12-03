@@ -99,11 +99,11 @@ def setup():
                           f"IMG{FLAGS.n_train_img}",
                           f"SKW{FLAGS.nskew}-{FLAGS.topweight/FLAGS.baseweight}",
 			  ]) + FLAGS.comment
-        tags = ('v' if FLAGS.vector_rp else "") + ('d' if FLAGS.decay_lr else "") + str(FLAGS.seed)
+        tags = ('v' if FLAGS.vector_rp else "") + ('d' if FLAGS.decay_lr else "")
         net = FLAGS.beta_net.replace("pretrain-", "")
-        name = f"{net}-{tags}"
-#        if len(FLAGS.comment) != 0: name += '_' + FLAGS.comment
-        wandb.init(project='gossip', entity='gossips', group=group, job_type=tags, name=name,
+        job = f"{net}-{tags}"
+        seed = str(FLAGS.seed)
+        wandb.init(project='gossip', entity='gossips', group=group, job_type=job, name=str(FLAGS.seed),
                    config=config)
         wandb.define_metric('round')
         wandb.define_metric('comm_loss/*', step_metric='round')
@@ -114,9 +114,9 @@ def setup():
         wandb.define_metric('local_auc/*', step_metric='round')
         if FLAGS.logdir == 'tmp':
             if net.startswith('cheat'):
-                FLAGS.logdir = f'./oracle/{group}_{name}'
+                FLAGS.logdir = f'./oracle/{group}_{job}_{seed}'
             else:
-                FLAGS.logdir = f'./exp/{group}_{name}'
+                FLAGS.logdir = f'./exp/{group}_{job}_{seed}'
 
 def main(argv):
     setup()
