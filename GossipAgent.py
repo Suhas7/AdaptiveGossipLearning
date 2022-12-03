@@ -298,6 +298,8 @@ class GossipAgent:
         elif FLAGS.beta_net == 'heuristic':
             beta = .5*(1+self.calculate_rpeer()-self.other_rpeer)
             beta = float(beta.mean())
+        elif FLAGS.beta_net == "heuristic2":
+            beta = .5 + .1 * (sum(self.MAMD - self.YAMD) + sum(self.YAYD - self.MAYD))
         elif FLAGS.beta_net.startswith('cheat-'):
             step = float(FLAGS.beta_net.strip('cheat-'))
             n = math.floor(1 / step) + 1
