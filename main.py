@@ -153,12 +153,12 @@ def main(argv):
     x = np.arange(FLAGS.num_env_steps)
     k = 10
     print(f'AUC (last {k})')
-    for id in driver.agents.keys():
-        print(id, aucs[id][-k:])
-        plt.plot(x, aucs[id], label=f'{id}')
-    plt.legend()
-    plt.savefig(f"{FLAGS.logdir}/Agents Curve", bbox_inches='tight')
-    plt.clf()
+    # for id in driver.agents.keys():
+    #     print(id, aucs[id][-k:])
+    #     plt.plot(x, aucs[id], label=f'{id}')
+    # plt.legend()
+    # plt.savefig(f"{FLAGS.logdir}/Agents Curve", bbox_inches='tight')
+    # plt.clf()
     #plt.show()
 
     with open(f'{FLAGS.logdir}/Agent_local_auc.txt', 'a') as f:
@@ -168,12 +168,12 @@ def main(argv):
     x = np.arange(FLAGS.num_env_steps)
     k = 10
     print(f'local AUC (last {k})')
-    for id in driver.agents.keys():
-        print(id, local_aucs[id][-k:])
-        plt.plot(x, local_aucs[id], label=f'{id}')
-    plt.legend()
-    plt.savefig(f"{FLAGS.logdir}/Agents local test Curve", bbox_inches='tight')
-    plt.clf()
+    # for id in driver.agents.keys():
+    #     print(id, local_aucs[id][-k:])
+    #     plt.plot(x, local_aucs[id], label=f'{id}')
+    # plt.legend()
+    # plt.savefig(f"{FLAGS.logdir}/Agents local test Curve", bbox_inches='tight')
+    # plt.clf()
     #plt.show()
 
 if __name__ == '__main__':
