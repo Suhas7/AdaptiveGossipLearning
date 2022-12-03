@@ -26,9 +26,9 @@ for cfg in product(*params):
 	visited.add(ld)
 	count += 1
 	cmds.append(f"mkdir -p {ld}")
-	wait = "&" if count %5 != 0 else ""
+	wait = "> /dev/null &" if count %5 != 0 else ""
 	cmd = f"python3 main.py --num_agents {na} --num_dumb {int(na*pd)} --nskew {nsk} --topweight {dsk} "+\
-			f"--num_env_steps {nes} --n_train_img {nti} --beta_net {bn} --logdir {ld} {wait} >/dev/null"
+			f"--num_env_steps {nes} --n_train_img {nti} --beta_net {bn} --logdir {ld} {wait}"
 	cmds.append(cmd)
 
 with open("suhas_run.sh","w") as fd:
