@@ -5,10 +5,11 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from absl import flags, app
 import pickle as pkl
-import absl
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string('postfix', '', help='')
+flags.DEFINE_string('data', 'data', help='')
+
 
 import torch
 import torch.nn as nn
@@ -31,6 +32,8 @@ class nnBeta(nn.Module):
 class SLBetaModel:
     def __init__(self, model, type="linear"):
         self.model = model
+        self.type = type
+
     def predict(self, val):
         val = self.model.predict(val)
         if self.type == "logistic": val = self.sigmoid(val)
@@ -42,9 +45,11 @@ class SLBetaModel:
             pass
         ex = np.exp(x)
         return ex / (1 + ex)
+    def get_weights(self):
+        print(self.model.coef_)
 
 def main(argv):
-    df = pd.read_csv(FLAGS.logdir + '/data.csv', header=None)
+    df = pd.read_csv(FLAGS.logdir + '/' + FLAGS.data + '.csv', header=None)
     X, y = df.iloc[:, 1:-1].to_numpy(), df.iloc[:, -1].to_numpy()
     y = np.clip(y, 1e-8, 1-1e-8)
     train_X, test_X, train_y, test_y = train_test_split(X, y, train_size=0.75)
@@ -60,9 +65,9 @@ def main(argv):
     pred_y = np.clip(pred_y, 0, 1)
     print('test mse', mean_squared_error(test_y, pred_y))
     print('test mae', mean_absolute_error(test_y, pred_y))
-
-    with open(FLAGS.logdir + f"/sl_linear_{FLAGS.postfix}.pkl", 'wb') as fp:
-        pkl.dump(model, fp)
+    model = LinearRegression().fit(X,y)
+    with open(FLAGS.logdir + f"/linear_{FLAGS.postfix}.pkl", 'wb') as fp:
+        pkl.dump(SLBetaModel(model), fp)
 
     '''
     # log-odds-ratio

@@ -18,6 +18,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('beta_net', 'classify', help='Mechanism for beta selection')
 flags.DEFINE_string('state_type', "og", help='Mode of state representation')
 flags.DEFINE_bool('append_cheat', False, help='Mode of state representation')
+flags.DEFINE_string('sldir', 'oracle', help='')
 
 '''
 scope: self
@@ -141,7 +142,7 @@ class GossipAgent:
         loss = 0
         labels = []
         preds = []
-        if self.dumb and model == self.model and self.dumb_cache !=None:
+        if self.dumb and model == self.model and self.dumb_cache is not None:
             auc, loss = self.dumb_cache
             return auc, loss
         with torch.set_grad_enabled(self.combine_grad):
@@ -150,8 +151,6 @@ class GossipAgent:
                 pred = model(data.to(self.device))
                 loss += torch.nn.functional.cross_entropy(pred, label.to(self.device))
                 labels.append(label)
-                for lab in label.tolist():
-                    found.add(lab)
                 preds.append(pred)
 
             labels.append(self.missing)
@@ -162,8 +161,8 @@ class GossipAgent:
                                    average = None if state_type in ["vector","composite"] else 'macro')
             if model is self.model:
                 self.MAMD_history.append(auc)
-        if self.dumb and model == self.model and  self.dumb_cache==None:
-            self.dumb_cache = (auc,loss)
+        if self.dumb and model == self.model and self.dumb_cache is None:
+            self.dumb_cache = (auc, loss)
         return auc, loss
 
     def decay_lr(self):
@@ -252,7 +251,7 @@ class GossipAgent:
         composite_model = MnistMlp().to(self.device)
         composite_model.load_state_dict(state)
         # Take a local step with the composite model
-        self.local_step(self.local_step_freq, model=composite_model)
+        # self.local_step(self.local_step_freq, model=composite_model)
         # Compute and return AUC on oracle dataset
         return self.evaluate(composite_model, self.oracle_dataloader)[0]
     def average(self,x):
