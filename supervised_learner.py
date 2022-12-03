@@ -47,6 +47,7 @@ class SLBetaModel:
         return ex / (1 + ex)
     def get_weights(self):
         print(self.model.coef_)
+        print(self.model.intercept_)
 
 def main(argv):
     df = pd.read_csv(FLAGS.logdir + '/' + FLAGS.data + '.csv', header=None)

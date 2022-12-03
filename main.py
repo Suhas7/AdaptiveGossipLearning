@@ -72,7 +72,10 @@ def setup():
         wandb.define_metric('auc/*', step_metric='round')
         wandb.define_metric('local_auc/*', step_metric='round')
         if FLAGS.logdir == 'tmp':
-            FLAGS.logdir = f'./exp/{group}_{name}'
+            if net.startswith('cheat'):
+                FLAGS.logdir = f'./oracle/{group}_{name}'
+            else:
+                FLAGS.logdir = f'./exp/{group}_{name}'
 
 def main(argv):
     setup()
