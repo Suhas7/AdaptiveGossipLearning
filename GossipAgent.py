@@ -75,7 +75,7 @@ class GossipAgent:
             def _f(*args, **kwargs):
                 return float(FLAGS.beta_net.strip('fix-'))
             self.beta_policy = _f
-        elif FLAGS.beta_net.startswith('cheat-') or FLAGS.beta_net == "heuristic":
+        elif FLAGS.beta_net.startswith('cheat-') or FLAGS.beta_net.startswith("heuristic"):
             def _f(*args, **kwargs):
                 return 0
             self.beta_policy = _f
@@ -299,6 +299,8 @@ class GossipAgent:
 #            beta = .5*(1+self.calculate_rpeer()-self.other_rpeer)
 #            beta = float(beta.mean())
             beta = .5 + .1 * (sum(self.MAMD - self.YAMD) + sum(self.MAYD - self.YAYD))
+        elif FLAGS.beta_net == 'heuristic-2':
+            beta = .5 + .1005 * (sum(self.MAMD - self.YAMD) + sum(self.MAYD - self.YAYD))
         elif FLAGS.beta_net.startswith('cheat-'):
             step = float(FLAGS.beta_net.strip('cheat-'))
             n = math.floor(1 / step) + 1
