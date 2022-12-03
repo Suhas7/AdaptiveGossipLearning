@@ -6,10 +6,12 @@ params = [[10,50,100],  #NUM_AGENTS
 		  [15], # topweight
 		  [400], # num env steps
 		  [10,50], #num_train_images
-		  ["fix-0.5","fix-1.0","heuristic",\
+		  ["pretrain-linear_old"
+		    #"fix-0.5","fix-1.0","heuristic",\
 		  	#"pretrain-old_sllr.pkl --state_type vector",\
-		  	"pretrain-new_sllr.pkl --state_type composite"]]  # beta net
-#		  ["--decay_lr",""]]  #Whether to decay LR or not
+		  	#"pretrain-new_sllr.pkl --state_type composite"]   # beta net
+		  ]
+		 ]
 
 cmds = list()
 cmds.append("mkdir -p exp")
