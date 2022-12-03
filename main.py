@@ -56,11 +56,12 @@ def setup():
         )
         group = "_".join([f"AGT{FLAGS.num_agents}-{FLAGS.num_dumb}",
                           f"IMG{FLAGS.n_train_img}",
-                          f"SKW{FLAGS.nskew}-{FLAGS.topweight/FLAGS.baseweight}"])
+                          f"SKW{FLAGS.nskew}-{FLAGS.topweight/FLAGS.baseweight}",
+			  ]) + FLAGS.comment
         tags = ('v' if FLAGS.vector_rp else "") + ('d' if FLAGS.decay_lr else "")
         net = FLAGS.beta_net.strip("pretrain-")
         name = f"{net}-{tags}"
-        if len(FLAGS.comment) != 0: name += '_' + FLAGS.comment
+#        if len(FLAGS.comment) != 0: name += '_' + FLAGS.comment
         wandb.init(project='gossip', entity='gossips', group=group, job_type=tags, name=name,
                    config=config)
         wandb.define_metric('round')
