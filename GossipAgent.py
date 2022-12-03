@@ -323,6 +323,7 @@ class GossipAgent:
         else:
             beta = self.beta_policy()
             logging.debug(f'agent {self.id} beta {beta}')
+        beta = np.clip(beta, 0, 1)
 
         # Calculate gradient of peer model on local data (already done in stage 2)
 

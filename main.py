@@ -52,13 +52,14 @@ def setup():
             grid_h=FLAGS.env_grid_h,
             grid_w=FLAGS.env_grid_w,
             vector=FLAGS.vector_rp,
-            decay=FLAGS.decay_lr
+            decay=FLAGS.decay_lr,
+            seed=FLAGS.seed
         )
         group = "_".join([f"AGT{FLAGS.num_agents}-{FLAGS.num_dumb}",
                           f"IMG{FLAGS.n_train_img}",
                           f"SKW{FLAGS.nskew}-{FLAGS.topweight/FLAGS.baseweight}",
 			  ]) + FLAGS.comment
-        tags = ('v' if FLAGS.vector_rp else "") + ('d' if FLAGS.decay_lr else "")
+        tags = ('v' if FLAGS.vector_rp else "") + ('d' if FLAGS.decay_lr else "") + str(FLAGS.seed)
         net = FLAGS.beta_net.strip("pretrain-")
         name = f"{net}-{tags}"
 #        if len(FLAGS.comment) != 0: name += '_' + FLAGS.comment
