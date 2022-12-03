@@ -291,7 +291,9 @@ class GossipAgent:
             action = self.beta_policy(x)
 
         if FLAGS.beta_net == 'classify':
-            beta = np.random.choice(self.beta_action, p=action.detach().cpu().numpy())
+            prob = action.detach().cpu().numpy()
+            prob /= sum(prob)
+            beta = np.random.choice(self.beta_action, p=prob)
         elif FLAGS.beta_net == 'ddpg':
             beta = action.item()
             # beta = torch.tensor(1, device=self.device).float()
