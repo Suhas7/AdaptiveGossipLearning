@@ -4,16 +4,21 @@ params = [[20],         #NUM_AGENTS
           [0,.4],       #%_DUMB
           [10,4],          #NUM_SKEW_CLASSES (balance,40% unbalance)
           [15],         # topweight
-          [100],        # num env steps
+          [200],        # num env steps
           [30],         #num_train_images
-          [   "fix-.5", "fix-1","ddpg"
-              "heuristic", "heuristic-3",
-              "cheat-.1",
-            #"fix-0.5","fix-1.0","heuristic",\
-                #"pretrain-old_sllr.pkl --state_type vector",\
-                #"pretrain-new_sllr.pkl --state_type composite"]   # beta net
+          [
+              "fix-0.5",
+              "fix-1",
+              "ddpg",
+              #"classify",
+              "heuristic",
+              "heuristic-3",
+              "cheat-.1"
+              #"cheat-.1",
+              #"pretrain-old_sllr.pkl --state_type vector",\
+              #"pretrain-new_sllr.pkl --state_type composite"]   # beta net
           ],
-          [0]
+          [1,2] # seed (seed 0 is run manually)
          ]
 
 cmds = list()
@@ -32,7 +37,7 @@ for cfg in product(*params):
         wait = "> /dev/null &" #if count %5 != 0 else ""
         cmd = f"python3 main.py --num_agents {na} --num_dumb {int(na*pd)} --nskew {nsk} --topweight {dsk} "+\
                         f"--num_env_steps {nes} --n_train_img {nti} --beta_net {bn} --logdir {ld} --seed {seed} {wait}"
-        if count % 15 == 0:
+        if count % 12 == 0:
             cmds.append('wait')
         cmds.append(cmd)
 
